@@ -10,9 +10,9 @@ class Serve:
     def __init__(self, sess, model_name, checkpoint, char_emb=False):
         os.makedirs(os.path.join('training', 'data', 'dataset', model_name),
                     exist_ok=True)
-
-        data_dir = os.path.join('training', 'data', 'dataset', model_name)
-        model_dir = os.path.join('training', 'model', model_name)
+        cwd = os.path.dirname(os.path.realpath(__file__))
+        data_dir = os.path.join(cwd, 'training', 'data', 'dataset', model_name)
+        model_dir = os.path.join(cwd, 'training', 'model', model_name)
 
         hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
