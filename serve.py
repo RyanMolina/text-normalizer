@@ -2,7 +2,7 @@
 import os
 import argparse
 from nltk.tokenize import word_tokenize, sent_tokenize
-import seq2seq
+from .seq2seq import predictor, utils
 
 
 class Serve:
@@ -14,15 +14,15 @@ class Serve:
         data_dir = os.path.join('training', 'data', 'dataset', model_name)
         model_dir = os.path.join('training', 'model', model_name)
 
-        hparams = seq2seq.utils.load_hparams(
+        hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
 
         self.char_emb = char_emb
-        self.normalizer = seq2seq.predictor.Predictor(sess,
-                                                      dataset_dir=data_dir,
-                                                      output_dir=model_dir,
-                                                      output_file=checkpoint,
-                                                      hparams=hparams)
+        self.normalizer = predictor.Predictor(sess,
+                                              dataset_dir=data_dir,
+                                              output_dir=model_dir,
+                                              output_file=checkpoint,
+                                              hparams=hparams)
 
     def model_api(self, input_data):
         """Does all the preprocessing before prediction.
