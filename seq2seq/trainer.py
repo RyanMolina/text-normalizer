@@ -4,7 +4,7 @@ import random
 import time
 import math
 import tensorflow as tf
-from seq2seq import model, dataset, utils
+from . import model, dataset, utils
 
 """
 train loss value

@@ -2,7 +2,7 @@ import re
 import random
 import string
 from nltk.tokenize import MWETokenizer
-from training.data.hyphenator import Hyphenator
+from .hyphenator import Hyphenator
 
 
 class TextNoisifier:

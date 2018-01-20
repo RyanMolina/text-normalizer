@@ -3,7 +3,7 @@ import random
 import time
 from multiprocessing import Pool
 import nltk
-from training.data.textnoisifier import TextNoisifier
+from .textnoisifier import TextNoisifier
 
 
 def csv_to_dict(file):

@@ -1,9 +1,9 @@
 """Contains Predictor class"""
 import os
 import tensorflow as tf
-from seq2seq.dataset import Dataset
-from seq2seq.model import ModelBuilder
-from seq2seq import utils
+from .dataset import Dataset
+from .model import ModelBuilder
+from . import utils
 
 
 class Predictor(object):

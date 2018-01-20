@@ -6,7 +6,7 @@ import os
 import collections
 import tensorflow as tf
 from tensorflow.python.ops import lookup_ops
-from seq2seq import utils
+from . import utils
 
 
 class Dataset:
