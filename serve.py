@@ -2,7 +2,10 @@
 import os
 import argparse
 from nltk.tokenize import word_tokenize, sent_tokenize
-from .seq2seq import predictor, utils
+try:
+    from .seq2seq import predictor, utils
+except SystemError:
+    from seq2seq import predictor, utils
 
 
 class Serve:
@@ -86,6 +89,7 @@ def parse_args():
 
 if __name__ == '__main__':
     import tensorflow as tf
+
     ARGS = parse_args()
     with tf.Session() as sess:
         NORMALIZER = Serve(sess=sess,
