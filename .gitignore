@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 *.pyo
 
+venv/*
+
 # Trained models
 training/model/*
 !training/model/.gitkeep
