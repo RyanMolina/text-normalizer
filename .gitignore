@@ -9,17 +9,14 @@ venv/*
 # Trained models
 training/model/*
 !training/model/.gitkeep
-!training/model/model_served
 
 # Data folder
 !training/data/.gitkeep
 
 # Corpus collected
 training/data/corpus/*
-!training/data/corpus/*.txt
 !training/data/corpus/.gitkeep
 
 # Dataset generated
 training/data/dataset/*
-!training/data/dataset/model_served
 !training/data/dataset/.gitkeep

@@ -64,11 +64,11 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Dir of your selected model and the checkpoint.")
 
-    parser.add_argument('--model_name', default='model_served', type=str,
+    parser.add_argument('model_name', type=str,
                         help="""
                         Name of the model to use.
                         Change only if you want to try other models.
-                        (Default: 'model_served')
+                        Models must be saved in training/model/<model_name>
                         """)
     parser.add_argument('--checkpoint', default=None, type=str,
                         help="""

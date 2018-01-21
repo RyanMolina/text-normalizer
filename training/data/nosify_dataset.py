@@ -186,13 +186,13 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
 
 
 accent_dict = csv_to_dict(os.path.join(
-    'training', 'data', 'common_accented_words.txt'))
+    'training', 'data', 'common_accented_words.dic'))
 
 contract_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_contracted_words.txt'))
+    os.path.join('training', 'data', 'common_contracted_words.dic'))
 
 phonetic_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_phonetically_styled_words.txt'))
+    os.path.join('training', 'data', 'common_phonetically_styled_words.dic'))
 
 expansion_dict = {v: k for k, v in contract_dict.items()}
 
