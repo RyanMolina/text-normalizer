@@ -2,10 +2,6 @@
 import os
 import argparse
 from nltk.tokenize import word_tokenize, sent_tokenize
-try:
-    from .seq2seq import predictor, utils
-except SystemError:
-    from seq2seq import predictor, utils
 
 
 class Serve:
@@ -88,7 +84,10 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    #  Imports when running as a script
     import tensorflow as tf
+    from seq2seq import predictor, utils
+    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     ARGS = parse_args()
     with tf.Session() as sess:
@@ -102,3 +101,5 @@ if __name__ == '__main__':
                 print(NORMALIZER.model_api(text))
             else:
                 break
+else:
+    from .seq2seq import predictor, utils

@@ -12,9 +12,9 @@ class TextNoisifier:
         self.phonetic_style_dict = phonetic_style_dict
         self.contraction_dict = contraction_dict
         self.expansion_dict = expansion_dict
-        self.re_adj_vowels = re.compile(r'[aeiou]{2,}')
+        self.re_adj_vowels = re.compile(r'[aeiou]{2,}', re.IGNORECASE)
         self.re_digits = re.compile(r'-?\d+')
-        self.re_accepted = re.compile(r"^[\sA-Za-z'-]+")
+        self.re_accepted = re.compile(r"\b[\sA-Za-z'-]+\b")
         self.re_hyphens = re.compile(r'(-)')
         self.misspell_replacement = list(string.ascii_lowercase) + ['']
         self.vowels = "aeiouAEIOU"
@@ -156,11 +156,11 @@ class TextNoisifier:
                 units[i + 1] = str(2) + units[i + 1][(len(units[i])):]
         return ''.join(units)
 
-    def noisify(self, word):
+    def noisify(self, word, sos=False):
         if not self.re_digits.search(word) \
                 and self.re_accepted.search(word) \
                 and len(word) > 1 \
-                and word[0].islower() \
+                and (sos or word[0].islower()) \
                 and "'" not in word:
 
             grouped_units = self.group_repeating_units(word)

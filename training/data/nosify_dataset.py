@@ -35,7 +35,7 @@ def noisify(text):
 
 def ngram_wrapper(text):
     ngrams = [grams
-              for i in range(6)
+              for i in range(3, 7)
               for grams in nltk.ngrams(text.split(), i)
               ]
     return ngrams
@@ -87,7 +87,7 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
                           if gram]
 
         dataset_ngrams = random.sample(dataset_ngrams, len(dataset_ngrams))
-        dataset.extend(dataset_ngrams[:500000])
+        dataset.extend(dataset_ngrams[:200000])
         print('  [+] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
@@ -153,9 +153,16 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
             noisy_sentence = ntg.remove_space_expr.sub(
                 ntg.word_remove_space, noisy_sentence)
 
-            noisy_sentence = ' '.join(process_pool.map(
-                noisify, noisy_sentence.split()))
+            noisy_sentence = noisy_sentence.split()
 
+            sos = ntg.noisify(noisy_sentence[0], sos=True)
+
+            noisy_sentence = process_pool.map(
+                noisify, noisy_sentence[1:])
+
+            noisy_sentence.insert(0, sos)
+
+            noisy_sentence = ' '.join(noisy_sentence)
             # if random.getrandbits(1):
             #     puncts = "!.?,:;"
             #     punct_sample = random.sample(

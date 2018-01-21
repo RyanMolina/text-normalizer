@@ -5,9 +5,16 @@
 import os
 import argparse
 import shutil
-from training.data import nosify_dataset
-from utils import generate_vocab, split_dataset, sent_tokenizer
-import seq2seq
+try:
+    from .seq2seq import utils, trainer
+    from .training.data import nosify_dataset
+    from .utils import generate_vocab, split_dataset, sent_tokenizer
+except SystemError:
+    from training.data import nosify_dataset
+    from utils import generate_vocab, split_dataset, sent_tokenizer
+    from seq2seq import utils, trainer
+
+
 
 
 def main():
@@ -61,6 +68,7 @@ def main():
             max_vocab_size=20000)
 
     if args.train:
+        
         data_dir = os.path.join(training_path, model_name)
         model_dir = os.path.join('training', 'model', model_name)
         os.makedirs(model_dir, exist_ok=False)
@@ -69,11 +77,11 @@ def main():
         if not os.path.exists(os.path.join(model_dir, hparams_file)):
             shutil.copy(hparams_file, os.path.join(model_dir))
 
-        hparams = seq2seq.utils.load_hparams(
+        hparams = utils.load_hparams(
             os.path.join(model_dir, hparams_file))
-        trainer = seq2seq.trainer.Trainer(
+        normalizer_trainer = trainer.Trainer(
             data_dir=data_dir, model_dir=model_dir, hparams=hparams)
-        trainer.train()
+        normalizer_trainer.train()
 
 
 def parse_args():
