@@ -67,7 +67,6 @@ def get_vocab(infile, max_vocab_size=None, delimiter=" ",
             if delimiter == "":
                 tokens = list(line.strip())
             else:
-                # tokens = nltk.word_tokenize(line.strip())
                 tokens = line.strip().split(delimiter)
             tokens = [_ for _ in tokens if len(_) > 0]
             cnt.update(tokens)

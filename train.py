@@ -1,20 +1,15 @@
-"""Script to do all the work:
-- generate dataset
-- train the model
-"""
+"""Script to do all the work."""
 import os
 import argparse
 import shutil
 try:
     from .seq2seq import utils, trainer
-    from .training.data import nosify_dataset
-    from .utils import generate_vocab, split_dataset, sent_tokenizer
+    from .training.data import noisify_dataset
+    from .utils import generate_vocab, split_dataset
 except SystemError:
-    from training.data import nosify_dataset
-    from utils import generate_vocab, split_dataset, sent_tokenizer
+    from training.data import noisify_dataset
+    from utils import generate_vocab, split_dataset
     from seq2seq import utils, trainer
-
-
 
 
 def main():
@@ -22,29 +17,24 @@ def main():
     args = parse_args()
     model_name = args.model_name
 
-    corpus_path = os.path.join('training', 'data', 'corpus')
-    articles_path = os.path.join(corpus_path, args.src)
-
     training_path = os.path.join('training', 'data', 'dataset')
     os.makedirs(os.path.join(training_path, model_name), exist_ok=True)
 
-    sent_tokenizer_path = os.path.join(
-        'training', 'data', 'sent_tokenizer.pickle')
-
-    if args.train_sent_tokenizer:
-        sent_tokenizer.train(articles_path, sent_tokenizer_path)
-
-    if args.generate_dataset:
-        nosify_dataset.collect_dataset(articles_path,
+    if args.corpus:
+        print("> Generating dataset from the corpus file...")
+        corpus_path = os.path.join('training', 'data', 'corpus')
+        articles_path = os.path.join(corpus_path, args.corpus)
+        noisify_dataset.collect_dataset(articles_path,
                                        os.path.join(
                                            training_path, model_name,
                                            'dataset.dec'),
-                                       tok=sent_tokenizer_path,
                                        char_level_emb=args.char_emb,
                                        augment_data=args.augment_data,
                                        shuffle=args.shuffle,
                                        max_seq_len=args.max_seq_len)
 
+    if args.split_dataset:
+        print("> Splitting the dataset to train/dev/test set...")
         split_dataset.split(
             os.path.join(
                 training_path, model_name,
@@ -59,6 +49,8 @@ def main():
             os.path.join(training_path, model_name),
             'dec', test_size=500, dev_size=500)
 
+    if args.generate_vocab:
+        print("> Generating the vocab files...")
         generate_vocab.get_vocab(
             os.path.join(training_path, model_name, 'train.enc'),
             max_vocab_size=20000)
@@ -68,10 +60,10 @@ def main():
             max_vocab_size=20000)
 
     if args.train:
-        
+        print("> Start trainining...")
         data_dir = os.path.join(training_path, model_name)
         model_dir = os.path.join('training', 'model', model_name)
-        os.makedirs(model_dir, exist_ok=False)
+        os.makedirs(model_dir, exist_ok=True)
         hparams_file = os.path.join('hparams.json')
 
         if not os.path.exists(os.path.join(model_dir, hparams_file)):
@@ -86,23 +78,31 @@ def main():
 
 def parse_args():
     """Parse the arguments needed before running.
+
     Returns:
         args : contains the source text, model name, and if
                should generate dataset or train.
+
     """
     parser = argparse.ArgumentParser()
 
     parser.register("type", "bool", lambda v: v.lower() == "true")
 
-    parser.add_argument('src', type=str, help="Filename of your source text")
-
-    parser.add_argument('--model_name', default='model', type=str,
+    parser.add_argument('model_name', default='model', type=str,
                         help="Unique name for each model you train.")
 
-    parser.add_argument('--generate_dataset',
+    parser.add_argument('--corpus', type=str, default=None,
+                        help="Generate parallel noisy text")
+
+    parser.add_argument('--split_dataset',
                         type="bool", nargs="?", const=False,
                         default=False,
-                        help="Generate parallel noisy text")
+                        help="""Split dataset to train/dev/test""")
+
+    parser.add_argument('--generate_vocab',
+                        type="bool", nargs="?", const=False,
+                        default=False,
+                        help="""Generate the vocab file from train file""")
 
     parser.add_argument('--train',
                         type="bool", nargs="?", const=False,
@@ -129,11 +129,6 @@ def parse_args():
     parser.add_argument('--max_seq_len', default=140, type=int,
                         help="""Maximum seq length
                         to be used in dataset generation""")
-
-    parser.add_argument('--train_sent_tokenizer',
-                        type="bool", nargs="?", const=False,
-                        default=False,
-                        help="Train a new sentence tokenizer")
 
     return parser.parse_args()
 

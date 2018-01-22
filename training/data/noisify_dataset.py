@@ -1,12 +1,13 @@
+"""Module that generates the dataset."""
 import os
 import random
 import time
 from multiprocessing import Pool
-import nltk
 from .textnoisifier import TextNoisifier
 
 
 def csv_to_dict(file):
+    """Convert csv to python dictionary."""
     d = {}
     with open(file, 'r') as f:
         rows = f.read().split('\n')
@@ -17,6 +18,7 @@ def csv_to_dict(file):
 
 
 def is_ascii(text):
+    """ASCII Characters only."""
     try:
         text.encode('ascii')
         return True
@@ -25,62 +27,51 @@ def is_ascii(text):
 
 
 def noisify(text):
-    """
-    function wrapper to be fed on Pool.map()
-    :param text:
-    :return noisy text:
+    """Given a text, return noisy text.
+
+    This function also wraps the instance method to be passed on Pool map.
+    Since, multiprocessing.Pool.map() only accept single argument function.
+    This function hides the 'self' in ntg.noisify().
     """
     return ntg.noisify(text)
 
 
-def ngram_wrapper(text):
+def ngram(text):
+    """Given a text, return the ngrams(3, 7)."""
+    def find_ngrams(input_list, n):
+        return zip(*[input_list[i:] for i in range(n)])
     ngrams = [grams
               for i in range(3, 7)
-              for grams in nltk.ngrams(text.split(), i)
+              for grams in find_ngrams(text.split(), i)
               ]
     return ngrams
 
 
-def space_seperated(text):
-    return ' '.join(nltk.word_tokenize(text))
-
-
-def collect_dataset(src, tgt, tok=None, max_seq_len=50,
+def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
                     shuffle=False, size=None):
-
+    """Generate a parallel clean and noisy text from a given clean text."""
     process_pool = Pool()
-
-    # Instance of PunktSentenceTokenizer from nltk.tokenize module
-    if tok:
-        tokenizer = nltk.data.load(tok).tokenize
-    else:
-        tokenizer = nltk.sent_tokenize
 
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
         contents = infile.read()
-        articles = [content.strip()
-                    for content in contents.split('\n')
-                    if content != '\n']
+        sentences = [content.strip()
+                     for content in contents.split('\n')
+                     if content]
 
     dataset = []
 
     if shuffle:
-        articles = random.sample(articles, len(articles))
+        sentences = random.sample(sentences, len(sentences))
 
-    print('  [+] converting to list of sentences')
-    articles_sentences = process_pool.map(tokenizer, articles)
-    print('  [+] flattening the list of sentences')
-    sentences = [sentence
-                 for sentences in articles_sentences
-                 for sentence in sentences]
     dataset.extend(sentences)
     dataset_size = len(dataset)
     print('  [+] Flattened data length: {}'.format(dataset_size))
 
     if augment_data:
-        ngrams = process_pool.map(ngram_wrapper, dataset)
+        ngrams = process_pool.map(ngram, dataset)
+
         dataset_ngrams = [' '.join(list(gram))
                           for grams in ngrams
                           for gram in grams
@@ -91,9 +82,6 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
         print('  [+] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
-
-    if not char_level_emb:
-        dataset = process_pool.map(space_seperated, dataset)
 
     if shuffle:
         print('  [+] randomizing the position of the dataset')
@@ -116,7 +104,6 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
             sent_number += 1
 
             if sent_number % 10000 == 0:
-                
                 speed = 10000 / (time.time() - start_time)
                 print("      # {} "
                       "line/s: {:.2f} "
@@ -131,27 +118,19 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
 
             # Normalize first the contracted words from News Site Articles
             clean_sentence = ntg.expansion(clean_sentence)
-            clean_sentence = ntg.expandable_expr.sub(ntg.word_expansion,
-                                                     clean_sentence)
+            clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
+                                                    clean_sentence)
 
             noisy_sentence = clean_sentence
 
-            noisy_sentence = ntg.contraction(noisy_sentence)
+            if random.getrandbits(1):
+                noisy_sentence = ntg.contraction(noisy_sentence)
 
-            noisy_sentence = ntg.contractable_expr.sub(
-                ntg.word_contraction, noisy_sentence)
+            noisy_sentence = ntg.contract_pattern.sub(
+                ntg.contract_repl, noisy_sentence)
 
-            noisy_sentence = ntg.anable_expr.sub(
-                ntg.word_ang_to_an, noisy_sentence)
-
-            noisy_sentence = ntg.anu_expr.sub(
-                ntg.word_ano, noisy_sentence)
-
-            noisy_sentence = ntg.amable_expr.sub(
-                ntg.word_ang_to_am, noisy_sentence)
-
-            noisy_sentence = ntg.remove_space_expr.sub(
-                ntg.word_remove_space, noisy_sentence)
+            for re_exp, repl in ntg.text_patterns:
+                noisy_sentence = re_exp.sub(repl, noisy_sentence)
 
             noisy_sentence = noisy_sentence.split()
 
@@ -163,13 +142,6 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
             noisy_sentence.insert(0, sos)
 
             noisy_sentence = ' '.join(noisy_sentence)
-            # if random.getrandbits(1):
-            #     puncts = "!.?,:;"
-            #     punct_sample = random.sample(
-            #         puncts, random.randrange(len(puncts)))
-            #     remove_punct_rule = \
-            #         str.maketrans(dict.fromkeys(punct_sample, None))
-            #     noisy_sentence = noisy_sentence.translate(remove_punct_rule)
 
             if char_level_emb:
                 clean_sentence = ' '.join(list(clean_sentence)) \
@@ -178,8 +150,8 @@ def collect_dataset(src, tgt, tok=None, max_seq_len=50,
                                     .replace(' ' * 3, ' <space> ')
 
             if clean_sentence and noisy_sentence:
-                print(clean_sentence, file=decoder_file)
-                print(noisy_sentence, file=encoder_file)
+                decoder_file.write(clean_sentence + "\n")
+                encoder_file.write(noisy_sentence + "\n")
 
         decoder_file.truncate(decoder_file.tell() - 1)
         encoder_file.truncate(encoder_file.tell() - 1)

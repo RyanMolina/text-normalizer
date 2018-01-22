@@ -1,7 +1,7 @@
 import re
 import random
 import string
-from nltk.tokenize import MWETokenizer
+from utils.tokenizer import mwe_tokenize
 from .hyphenator import Hyphenator
 
 
@@ -26,26 +26,23 @@ class TextNoisifier:
         exceptions = matches[1]
         self.hyphenator = Hyphenator(patterns, exceptions)
 
-        mwe = []
+        self.mwes = []
         for k, v in contraction_dict.items():
             words = k.split()
             if len(words) > 1:
-                mwe.append((words[0], words[1]))
+                self.mwes.append(tuple(words))
+        self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
+        self.expand_repl = r'\1 a\2'
 
-        self.mwe_tokenizer = MWETokenizer(mwe, separator=' ')
+        self.contract_pattern = re.compile(r'(\w+[aeiou])\s\ba([ty]\b)', re.IGNORECASE)
+        self.contract_repl = r"\1'\2"
 
-        self.amable_expr = re.compile(r'\b[aA]ng\s\b[bp]\w+\b')
-        self.anable_expr = re.compile(r'\b[aA]ng\s\b[sldt]\w+\b')
-
-        self.anu_expr = re.compile(r'\b[aA]no\s\b\w{2}\b')
-
-        self.expandable_expr = re.compile(r"\w[aeiou]'[yt]$",
-                                          re.IGNORECASE)
-        self.contractable_expr = re.compile(r'\w+[aeiou]\sa[ty]\b',
-                                            re.IGNORECASE)
-
-        self.remove_space_expr = re.compile(r'\b(pa|na|di)\b\s\w+',
-                                            re.IGNORECASE)
+        self.text_patterns = [
+            (re.compile(r'(\b[aA])(ng\s)(\b[bp]\w+\b)'), r'\1m\3'),
+            (re.compile(r'(\b[aA]n)(g\s)(\b[sldt]\w+\b)'), r'\1\3'),
+            (re.compile(r'(\b[aA]n)(o\s)(\b\w{2}\b)'), r'\1u\3'),
+            (re.compile(r'(\b(pa|na|di)\b)\s(\b[A-Za-z]{,2}\b)', re.IGNORECASE), r'\1\3')
+        ]
 
     def remove_vowels(self, word):
         vowel_sample = random.sample(self.vowels,
@@ -116,7 +113,7 @@ class TextNoisifier:
         return word
 
     def _dict_substitution(self, text, substitution_dict):
-        words = self.mwe_tokenizer.tokenize(text.split())
+        words = mwe_tokenize(text, self.mwes)
         for i in range(len(words)):
             try:
                 words[i] = substitution_dict[words[i]]
@@ -163,13 +160,11 @@ class TextNoisifier:
                 and (sos or word[0].islower()) \
                 and "'" not in word:
 
-            grouped_units = self.group_repeating_units(word)
-            if grouped_units != word:
-                return grouped_units
-
             selected = random.choice(['remove_vowels',
                                       'phonetic_style',
+                                      'group_repeating_units',
                                       'accent_style'])
+
             noisy_word = self.dispatch_rules(selected, word)
 
             if noisy_word == word:
@@ -189,27 +184,3 @@ class TextNoisifier:
             'misspell': self.misspell(word),
             'group_repeating_units': self.group_repeating_units(word)
         }.get(rule, word)
-
-    @staticmethod
-    def word_contraction(match):
-        return match.group(0)[:-3] + "'" + match.group(0)[-1:]
-
-    @staticmethod
-    def word_ang_to_am(match):
-        return match.group(0)[:1] + 'm' + match.group(0)[4:]
-
-    @staticmethod
-    def word_ang_to_an(match):
-        return match.group(0)[:2] + match.group(0)[4:]
-
-    @staticmethod
-    def word_ano(match):
-        return match.group(0)[:2] + 'u' + match.group(0)[4:]
-
-    @staticmethod
-    def word_expansion(match):
-        return match.group(0)[:-2] + " a" + match.group(0)[-1:]
-
-    @staticmethod
-    def word_remove_space(match):
-        return match.group(0).replace(' ', '')
