@@ -42,8 +42,8 @@ class Dataset:
                     tgt_vocab_file, default_value=self.hparams.unk_token)
             with open(os.path.join(dataset_dir, 'test.enc'), 'r') as enc, \
                     open(os.path.join(dataset_dir, 'test.dec'), 'r') as dec:
-                self.sample_src_data = enc.read().split('\n')
-                self.sample_tgt_data = dec.read().split('\n')
+                self.sample_src_data = enc.read().splitlines()
+                self.sample_tgt_data = dec.read().splitlines()
 
         self._load_dataset(dataset_dir)
         self._convert_to_tokens()

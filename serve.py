@@ -35,11 +35,11 @@ class Serve:
         """
         output = ""
         for sentence in sent_tokenize(input_data):
-            if not self.char_emb:
-                tokens = sentence
-            else:
+            if self.char_emb:
                 tokens = self._char_emb_format(sentence)
-
+            else:
+                tokens = sentence  # word-level emb
+    
             normalized = self.normalizer.predict(tokens)
 
             if self.char_emb:
@@ -116,10 +116,6 @@ if __name__ == '__main__':
                     open(os.path.join(path, 'results.txt'), 'w') as outfile:
                 contents = infile.read()
 
-                if ARGS.char_emb:
-                    contents = contents.replace(' ', '') \
-                                       .replace('<space>', ' ')
-
                 rows = contents.splitlines()
 
                 for row in rows:
@@ -132,13 +128,11 @@ if __name__ == '__main__':
                 correct = 0
                 with open(ARGS.expected_file, 'r') as expected_file:
                     contents = expected_file.read()
-                    if ARGS.char_emb:
-                        contents = contents.replace(' ', '') \
-                                           .replace('<space>', ' ')
-
                     rows = contents.splitlines()
 
                     for i, e in enumerate(normalized):
+                        print("system: " + e)
+                        print("expect: " + rows[i])
                         if e == rows[i]:
                             correct += 1
                     print("Correctly normalized: {} Total: {} Accuracy: {}"

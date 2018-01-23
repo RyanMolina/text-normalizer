@@ -4,26 +4,18 @@ import random
 import time
 from multiprocessing import Pool
 from .textnoisifier import TextNoisifier
+from utils import tokenizer
 
 
 def csv_to_dict(file):
     """Convert csv to python dictionary."""
     d = {}
     with open(file, 'r') as f:
-        rows = f.read().split('\n')
+        rows = f.read().splitlines()
         for row in rows:
             k, v = row.split(',')
             d.update({k: v})
     return d
-
-
-def is_ascii(text):
-    """ASCII Characters only."""
-    try:
-        text.encode('ascii')
-        return True
-    except UnicodeEncodeError:
-        return False
 
 
 def noisify(text):
@@ -42,47 +34,48 @@ def ngram(text):
         return zip(*[input_list[i:] for i in range(n)])
     ngrams = [grams
               for i in range(3, 7)
-              for grams in find_ngrams(text.split(), i)
-              ]
+              for grams in find_ngrams(tokenizer.word_tokenize(text), i)]
     return ngrams
 
 
 def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
-                    shuffle=False, size=None):
+                    shuffle=False, size=1000000):
     """Generate a parallel clean and noisy text from a given clean text."""
-    process_pool = Pool()
-
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
         contents = infile.read()
         sentences = [content.strip()
-                     for content in contents.split('\n')
+                     for content in contents.splitlines()
                      if content]
 
+
+    process_pool = Pool()
     dataset = []
     if shuffle:
-        sentences = random.sample(sentences, len(sentences))
+        random.shuffle(sentences)
 
-    dataset.extend(sentences)
+    dataset.extend(sentences[:size])
     dataset_size = len(dataset)
     print('  [+] Flattened data length: {}'.format(dataset_size))
 
     if augment_data:
-        ngrams = process_pool.map(ngram, dataset)
+        print('  [+] N-grams to augment the data.')
+        ngrams = process_pool.map(ngram, dataset[:50000])
+        print('    [-] Flattening n-grams...') 
         dataset_ngrams = [' '.join(list(gram))
                           for grams in ngrams
                           for gram in grams
                           if gram]
-
-        dataset_ngrams = random.sample(dataset_ngrams, len(dataset_ngrams))
-        dataset.extend(dataset_ngrams[:200000])
-        print('  [+] Add ngrams to dataset')
+        print('    [-] Shuffling n-grams')
+        random.shuffle(dataset_ngrams)
+        dataset.extend(dataset_ngrams[:size*2])
+        print('    [-] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
 
     if shuffle:
-        print('  [+] randomizing the position of the dataset')
+        print('  [+] Randomizing the position of the dataset')
         dataset = random.sample(dataset, len(dataset))
 
     if size:
@@ -92,7 +85,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
     start_time = time.time()
 
     print('   => collecting clean and noisy sentences')
-
     filename, _ = os.path.splitext(tgt)
     noisified_file = "{}.{}".format(filename, 'enc')
     with open(tgt, 'w', encoding="utf8") as decoder_file, \
@@ -130,7 +122,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
             for re_exp, repl in ntg.text_patterns:
                 noisy_sentence = re_exp.sub(repl, noisy_sentence)
 
-            noisy_sentence = noisy_sentence.split()
+            noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
 
             sos = ntg.noisify(noisy_sentence[0], sos=True)
 

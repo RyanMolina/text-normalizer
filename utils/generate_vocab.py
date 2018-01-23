@@ -60,7 +60,7 @@ def get_vocab(infile, max_vocab_size=None, delimiter=" ",
     # Counter for all tokens in the vocabulary
     cnt = collections.Counter()
     with open(infile, 'r') as f:
-        lines = f.read().split('\n')
+        lines = f.read().splitlines()
         for line in lines:
             if downcase:
                 line = line.lower()

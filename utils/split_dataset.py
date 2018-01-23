@@ -26,7 +26,7 @@ def main():
 def split(src, tgt, file_ext, test_size=None, train_size=None, dev_size=None):
     with open(src, 'r') as datafile:
         dataset = datafile.read()
-        dataset = dataset.split('\n')
+        dataset = dataset.splitlines()
 
     if not train_size:
         train_size = len(dataset)
