@@ -61,7 +61,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
                      if content]
 
     dataset = []
-
     if shuffle:
         sentences = random.sample(sentences, len(sentences))
 
@@ -71,7 +70,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
 
     if augment_data:
         ngrams = process_pool.map(ngram, dataset)
-
         dataset_ngrams = [' '.join(list(gram))
                           for grams in ngrams
                           for gram in grams

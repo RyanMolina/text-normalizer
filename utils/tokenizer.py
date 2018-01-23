@@ -73,6 +73,7 @@ def mwe_tokenize(s, mwes=None, sep=' '):
             tokens[i] = e.replace('<mwe>', ' ')
     return tokens
 
+
 def word_tokenize(s):
     """Tokenize a string using the rule above into list of words."""
     for (regexp, repl) in _tokenize_regexps:
@@ -82,8 +83,19 @@ def word_tokenize(s):
 
 def sent_tokenize(s):
     """Tokenize a string into list of sentences."""
-    sentences = re.split(r"""(?<!\w\.\w.)(?<![A-Z][a-z]\.)
-                         (?<![A-Z][a-z][a-z]\.)(?<![A-Z][a-z][a-z][a-z]\.)
-                         (?<=\.|\?)\s""", s)
-
+    sentences = re.split(r"(?<!\w\.\w.)"
+                         r"(?<![A-Z][a-z]\.)"
+                         r"(?<![A-Z][a-z][a-z]\.)"
+                         r"(?<![A-Z][a-z][a-z][a-z]\.)"
+                         r"(?<=\.|\?)\s", s)
     return sentences
+
+if __name__ == '__main__':
+    with open('training/data/corpus/tagalog.txt', 'r') as infile:
+        rows = infile.read().splitlines()
+        outfile = open('training/data/corpus/tagalog_sent_v2.txt', 'w')
+        for row in rows:
+            sentences = sent_tokenize(row)
+            for sentence in sentences:
+                outfile.write(sentence + "\n")
+        outfile.close()

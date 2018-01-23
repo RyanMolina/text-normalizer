@@ -3,7 +3,7 @@ import argparse
 
 spaces = re.compile(r'\s+')
 ascii_only = re.compile(r'[^\x00-\x7f]')
-
+news_location = re.compile(r'^(\w+\s\w+|\w+),\s\w+\s-\s') # MANILA, Philippines - <Article>
 
 def main():
     with open(args.src, 'r') as in_file, \
@@ -12,6 +12,7 @@ def main():
         articles = ascii_only.sub('', articles).splitlines()
         for article in articles:
             article = spaces.sub(' ', article)
+            article = news_location.sub('', article)
             article = article.replace('\r', '').replace('\n', '')
             if article:
                 print(article.strip(), file=out_file)

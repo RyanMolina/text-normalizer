@@ -25,13 +25,13 @@ def main():
         corpus_path = os.path.join('training', 'data', 'corpus')
         articles_path = os.path.join(corpus_path, args.corpus)
         noisify_dataset.collect_dataset(articles_path,
-                                       os.path.join(
-                                           training_path, model_name,
-                                           'dataset.dec'),
-                                       char_level_emb=args.char_emb,
-                                       augment_data=args.augment_data,
-                                       shuffle=args.shuffle,
-                                       max_seq_len=args.max_seq_len)
+                                        os.path.join(training_path,
+                                                     model_name,
+                                                     'dataset.dec'),
+                                        char_level_emb=args.char_emb,
+                                        augment_data=args.augment_data,
+                                        shuffle=args.shuffle,
+                                        max_seq_len=args.max_seq_len)
 
     if args.split_dataset:
         print("> Splitting the dataset to train/dev/test set...")
