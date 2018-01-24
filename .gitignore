@@ -17,6 +17,9 @@ training/model/*
 training/data/corpus/*
 !training/data/corpus/.gitkeep
 
+testing/*
+!testing/.gitkeep
+
 # Dataset generated
 training/data/dataset/*
 !training/data/dataset/.gitkeep

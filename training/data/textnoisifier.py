@@ -13,11 +13,19 @@ class TextNoisifier:
         self.contraction_dict = contraction_dict
         self.expansion_dict = expansion_dict
         self.re_adj_vowels = re.compile(r'[aeiou]{2,}', re.IGNORECASE)
-        self.re_digits = re.compile(r'-?\d+')
         self.re_accepted = re.compile(r"\b[\sA-Za-z'-]+\b")
         self.re_hyphens = re.compile(r'(-)')
-        self.misspell_replacement = list(string.ascii_lowercase) + ['']
-        self.vowels = "aeiouAEIOU"
+        self.vowels = 'aeiou'
+        self.vowels += self.vowels.upper()
+        self.consonants = "bcdfghjklmnpqrstvwxyz"
+        self.consonants += self.consonants.upper()
+
+        self.rules = ['remove_vowels',
+                      'phonetic_style',
+                      'group_repeating_units',
+                      'accent_style',
+                      'repeat_characters',
+                      'misspell']
 
         matches = re.findall(r"\{(.*?)\}",
                              hyphenator_dict,
@@ -38,11 +46,32 @@ class TextNoisifier:
         self.contract_repl = r"\1'\2"
 
         self.text_patterns = [
-            (re.compile(r'(\b[aA])(ng\s)(\b[bp]\w+\b)'), r'\1m\3'),
-            (re.compile(r'(\b[aA]n)(g\s)(\b[sldt]\w+\b)'), r'\1\3'),
-            (re.compile(r'(\b[aA]n)(o\s)(\b\w{2}\b)'), r'\1u\3'),
-            (re.compile(r'(\b(pa|na|di)\b)\s(\b[A-Za-z]{,2}\b)', re.IGNORECASE), r'\1\3')
+            (re.compile(r'(\b[aA])(ng\s)(\b[bp]\w+\b)'), r'\1m\3'),  # ang baho -> ambaho
+            (re.compile(r'(\b[aA]n)(g\s)(\b[gkhsldt]\w+\b)'), r'\1\3'),  # ang gulo -> angulo
+            (re.compile(r'(\b[aA]n)(o\s)(\b\w{2}\b)'), r'\1u\3'),  # ano ba -> anuba
+            (re.compile(r'(\b(ka|pa|na|di)\b)\s(\b[A-Za-z]{,5}\b)', re.IGNORECASE), r'\1\3')  # ka na -> kana
         ]
+
+        self.raw_daw = re.compile(r'([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)', re.IGNORECASE)
+
+    @staticmethod
+    def _format(match, repl):
+        return "{} {}{}".format(
+            match.group(1),
+            repl if match.group(2).islower() else repl.upper(),
+            match.group(3))
+
+    def normalize_raw_daw(self, match):
+        if match.group(1) in self.vowels:
+            return self._format(match, 'r')  # raw
+        elif match.group(1) in self.consonants:
+            return self._format(match, 'd')  # daw
+        
+    def noisify_raw_daw(self, match):
+        if match.group(1) in self.vowels:
+            return self._format(match, 'd')  # raw
+        elif match.group(1) in self.consonants:
+            return self._format(match, 'r')  # daw
 
     def remove_vowels(self, word):
         vowel_sample = random.sample(self.vowels,
@@ -81,7 +110,7 @@ class TextNoisifier:
         return word
 
     def repeat_characters(self, word):
-        letter = random.choice(list(self.vowels))
+        letter = random.choice(list(word))
         length = random.randrange(4, 10)
         if random.getrandbits(1):
             word = word.replace(letter, letter * length, 1)
@@ -90,13 +119,22 @@ class TextNoisifier:
         return word
 
     def misspell(self, word):
-        letter = word[random.randrange(len(word))]
-        replacement = random.choice(self.misspell_replacement)
-        if random.getrandbits(1):
-            word = word.replace(letter, replacement, 1)
+        selected = random.choice(['replace', 'delete', 'insert'])
+        letter = random.choice(list(word))
+        if selected == 'replace':
+            replacement = random.choice(string.ascii_lowercase)
+            if random.getrandbits(1):
+                word = word.replace(letter, replacement, 1)
+            else:
+                word = word[::-1].replace(letter, replacement, 1)[::-1]
         else:
-            word = word[::-1].replace(letter, replacement, 1)[::-1]
-
+            positions = [i for i, e in enumerate(list(word)) if e == letter]
+            idx = random.choice(positions) 
+            if selected == 'delete':
+                word = word[:idx] + word[idx + 1:]
+            else:
+                insert = random.choice(string.ascii_lowercase)
+                word = word[:idx] + insert + word[idx:]
         return word
 
     def phonetic_style(self, word):
@@ -154,10 +192,8 @@ class TextNoisifier:
         return ''.join(units)
 
     def noisify(self, word, sos=False):
-        if not self.re_digits.search(word) \
-                and self.re_accepted.search(word) \
+        if self.re_accepted.search(word) \
                 and len(word) > 1 \
-                and (sos or word[0].islower()) \
                 and "'" not in word:
 
             selected = random.choice(['remove_vowels',
@@ -167,7 +203,9 @@ class TextNoisifier:
 
             noisy_word = self.dispatch_rules(selected, word)
 
-            if noisy_word == word:
+            if '-' in noisy_word:
+                word = noisy_word.replace('-', '')
+            elif noisy_word == word:
                 selected = random.choice(['repeat_characters'])
                 word = self.dispatch_rules(selected, word)
             else:
