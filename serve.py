@@ -1,6 +1,5 @@
 """Contains the Serve class."""
 import os
-import argparse
 from utils.tokenizer import word_tokenize, sent_tokenize
 
 
@@ -38,8 +37,8 @@ class Serve:
             if self.char_emb:
                 tokens = self._char_emb_format(sentence)
             else:
-                tokens = sentence  # word-level emb
-    
+                tokens = sentence
+
             normalized = self.normalizer.predict(tokens)
 
             if self.char_emb:
@@ -61,6 +60,7 @@ def parse_args():
         args: contains the parsed arguments
 
     """
+    import argparse
     parser = argparse.ArgumentParser(
         description="Dir of your selected model and the checkpoint.")
 
@@ -116,9 +116,9 @@ if __name__ == '__main__':
                     open(os.path.join(path, 'results.txt'), 'w') as outfile:
                 contents = infile.read()
 
-                rows = contents.splitlines()
+                enc_rows = contents.splitlines()
 
-                for row in rows:
+                for row in enc_rows:
                     result = NORMALIZER.model_api(row)
                     normalized.append(result)
                     outfile.write(result + "\n")
@@ -128,12 +128,14 @@ if __name__ == '__main__':
                 correct = 0
                 with open(ARGS.expected_file, 'r') as expected_file:
                     contents = expected_file.read()
-                    rows = contents.splitlines()
+                    dec_rows = contents.splitlines()
 
                     for i, e in enumerate(normalized):
+                        print('-' * 30)
+                        print('input:  ' + enc_rows[i])
                         print("system: " + e)
-                        print("expect: " + rows[i])
-                        if e == rows[i]:
+                        print("expect: " + dec_rows[i])
+                        if e.lower() == dec_rows[i].lower():
                             correct += 1
                     print("Correctly normalized: {} Total: {} Accuracy: {}"
                           .format(correct,

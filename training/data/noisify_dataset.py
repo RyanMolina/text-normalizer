@@ -40,7 +40,7 @@ def ngram(text):
 
 def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
-                    shuffle=False, size=1000000):
+                    shuffle=False, size=10000000):
     """Generate a parallel clean and noisy text from a given clean text."""
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
@@ -69,7 +69,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
                           if gram]
         print('    [-] Shuffling n-grams')
         random.shuffle(dataset_ngrams)
-        dataset.extend(dataset_ngrams[:size*2])
+        dataset.extend(dataset_ngrams[:size*5])
         print('    [-] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
@@ -106,27 +106,25 @@ def collect_dataset(src, tgt, max_seq_len=50,
 
             clean_sentence = sentence[:max_seq_len]
 
-            # Normalize first the contracted words from News Site Articles
-            clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw, clean_sentence)
+            # Normalize the contracted words from Articles
+            clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw,
+                                             clean_sentence)
             clean_sentence = ntg.expansion(clean_sentence)
             clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
                                                     clean_sentence)
 
             noisy_sentence = clean_sentence
 
-            if random.getrandbits(1):
-                noisy_sentence = ntg.contraction(noisy_sentence)
+            noisy_sentence = ntg.contraction(noisy_sentence)
 
-            if random.getrandbits(1):
-                noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw, clean_sentence)
+            noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
+                                             clean_sentence)
 
-            if random.getrandbits(1):
-                noisy_sentence = ntg.contract_pattern.sub(
-                    ntg.contract_repl, noisy_sentence)
+            noisy_sentence = ntg.contract_pattern.sub(
+                ntg.contract_repl, noisy_sentence)
 
             for re_exp, repl in ntg.text_patterns:
-                if random.getrandbits(1):
-                    noisy_sentence = re_exp.sub(repl, noisy_sentence)
+                noisy_sentence = re_exp.sub(repl, noisy_sentence)
 
             noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
 
@@ -135,11 +133,12 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 noisy_sentence = process_pool.map(
                     noisify, noisy_sentence[1:])
                 noisy_sentence.insert(0, sos)
-            else:
-                rule = random.choice(ntg.rules)
-                for i, e in enumerate(noisy_sentence):
-                    if ntg.re_accepted.search(e):
-                        noisy_sentence[i] = ntg.dispatch_rules(rule, e)
+            # else:
+            #     rule = random.choice(ntg.rules)
+            #     for i, e in enumerate(noisy_sentence):
+            #         if ntg.re_accepted.search(e) \
+            #                 and (i > 0 and e[0].islower()):
+            #             noisy_sentence[i] = ntg.dispatch_rules(rule, e)
 
             noisy_sentence = ' '.join(noisy_sentence)
 

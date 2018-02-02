@@ -24,8 +24,7 @@ class TextNoisifier:
                       'phonetic_style',
                       'group_repeating_units',
                       'accent_style',
-                      'repeat_characters',
-                      'misspell']
+                      'repeat_characters',]
 
         matches = re.findall(r"\{(.*?)\}",
                              hyphenator_dict,
@@ -49,7 +48,8 @@ class TextNoisifier:
             (re.compile(r'(\b[aA])(ng\s)(\b[bp]\w+\b)'), r'\1m\3'),  # ang baho -> ambaho
             (re.compile(r'(\b[aA]n)(g\s)(\b[gkhsldt]\w+\b)'), r'\1\3'),  # ang gulo -> angulo
             (re.compile(r'(\b[aA]n)(o\s)(\b\w{2}\b)'), r'\1u\3'),  # ano ba -> anuba
-            (re.compile(r'(\b(ka|pa|na|di)\b)\s(\b[A-Za-z]{,5}\b)', re.IGNORECASE), r'\1\3')  # ka na -> kana
+            (re.compile(r'(pag)(\w+)'), r'\1 \2'),
+            (re.compile(r'(\b(ka|pa|na|di)\b)\s(\b[A-Za-z]{,2}\b)', re.IGNORECASE), r'\1\3')  # ka na -> kana
         ]
 
         self.raw_daw = re.compile(r'([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)', re.IGNORECASE)
@@ -194,6 +194,7 @@ class TextNoisifier:
     def noisify(self, word, sos=False):
         if self.re_accepted.search(word) \
                 and len(word) > 1 \
+                and (sos or word[0].islower()) \
                 and "'" not in word:
 
             selected = random.choice(['remove_vowels',
@@ -219,6 +220,5 @@ class TextNoisifier:
             'phonetic_style': self.phonetic_style(word),
             'accent_style': self.accent_style(word),
             'repeat_characters': self.repeat_characters(word),
-            'misspell': self.misspell(word),
             'group_repeating_units': self.group_repeating_units(word)
         }.get(rule, word)
