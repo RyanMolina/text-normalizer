@@ -1,7 +1,6 @@
 """Contains the Serve class."""
 import os
-from utils.tokenizer import word_tokenize, sent_tokenize
-
+import nltk.tokenize as tokenizer
 
 class Serve:
     """Serve an instance of the trained model."""
