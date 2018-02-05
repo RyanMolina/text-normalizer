@@ -1,0 +1,48 @@
+train
+    1x128 model per rules it only cost 4mb per model.
+    TRY IT ASAP.
+
+Perplexity is often used for measuring the usefulness of a language model
+(basically a probability distribution over sentence, phrase, words, etc).
+
+When evaluating a LM, a good LM is one that tend to assign higher probabilities
+to the test data (predicts very well).
+
+Example for a test set with words W = w_1, w_2, ..., w_n
+
+the perplexity of the model on the test set is
+
+PP(W) = P(w_1, w_2, w_3) ^ (-1/N)
+
+However, perplexity is not a definite way of sdetermining the usefulness of a
+language model. A model with low perplexity on a test set may not work eually
+well in real world application whose data may not be drawn from the same
+distribution as the test set. However, in the lack of efficient means to
+evaluate language model, perplexity is a useful metric for comparing language models.
+
+Howeever, in hte lack of efficient means to evaluate language model, Perplexity
+is a useful metric for comparing language models.
+
+* Losses.
+  - sequence_loss: Loss for a sequence model returning average log-perplexity.
+  - sequence_loss_by_example: As above, but not averaging over all examples.
+
+* model_with_buckets: A convenience function to create models with bucketing
+    (see the tutorial above for an explanation of why and how to use it).
+
+
+HIGH ERROR RATE/PERPLEXITY WHEN MISSPELLING IS ADDED IN THE RULES.
+
+The idea is to collect clean text from Tagalog Wikipedia and various News Site that publish reports
+in Tagalog. Then, generate the equivalent noisy text using various rules such as:
+ - Grouping repeating units
+ - Repetition of characters
+ - Contraction
+ - Accent stylization
+ - Phonetic stylization
+ - Misspelling
+
+Then train the parallel clean and noisy text using the Sequence to Sequence Recurrent Neural Network.
+
+- Rules layering
+- Remove the anuable rules, just put it in the dictionary.

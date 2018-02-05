@@ -2,10 +2,12 @@
 import os
 import random
 import time
+import re
 from multiprocessing import Pool
+# from utils import tokenizer
+import nltk.tokenize as tokenizer
+from nltk.tokenize.moses import MosesDetokenizer
 from .textnoisifier import TextNoisifier
-from utils import tokenizer
-
 
 def csv_to_dict(file):
     """Convert csv to python dictionary."""
@@ -14,7 +16,7 @@ def csv_to_dict(file):
         rows = f.read().splitlines()
         for row in rows:
             k, v = row.split(',')
-            d.update({k: v})
+            d.setdefault(k, []).append(v)
     return d
 
 
@@ -32,10 +34,27 @@ def ngram(text):
     """Given a text, return the ngrams(3, 7)."""
     def find_ngrams(input_list, n):
         return zip(*[input_list[i:] for i in range(n)])
+        
     ngrams = [grams
               for i in range(3, 7)
               for grams in find_ngrams(tokenizer.word_tokenize(text), i)]
     return ngrams
+
+
+def normalize_subwords_accents(text):
+    return ntg.normalize_accent_style_subwords(text)
+
+
+def normalize_words_accents(text):
+    return ntg.normalize_accent_style_words(text)
+
+
+def accents_subword(text):
+    return ntg.accent_style_subwords(text)
+
+
+def accents_word(text):
+    return ntg.accent_style_words(text)
 
 
 def collect_dataset(src, tgt, max_seq_len=50,
@@ -49,7 +68,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
                      for content in contents.splitlines()
                      if content]
 
-
     process_pool = Pool()
     dataset = []
     if shuffle:
@@ -62,7 +80,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
     if augment_data:
         print('  [+] N-grams to augment the data.')
         ngrams = process_pool.map(ngram, dataset[:50000])
-        print('    [-] Flattening n-grams...') 
+        print('    [-] Flattening n-grams...')
         dataset_ngrams = [' '.join(list(gram))
                           for grams in ngrams
                           for gram in grams
@@ -76,14 +94,24 @@ def collect_dataset(src, tgt, max_seq_len=50,
 
     if shuffle:
         print('  [+] Randomizing the position of the dataset')
-        dataset = random.sample(dataset, len(dataset))
+        random.shuffle(dataset)
 
     if size:
         dataset = dataset[:size]
 
+    re_fix_punct = re.compile(r' (?=\W)')
+    re_fix_punct_others = re.compile(r'([\[\]\(\)";:\']) (\w+)')
+    
+    detokenizer = MosesDetokenizer()
+
+    rules = ['group_repeating_units',
+             'phonetic_style',
+             'remove_vowels',
+             None]
+
     sent_number = 0
     start_time = time.time()
-
+    print('   => Dataset Size: {}'.format(len(dataset)))
     print('   => collecting clean and noisy sentences')
     filename, _ = os.path.splitext(tgt)
     noisified_file = "{}.{}".format(filename, 'enc')
@@ -105,42 +133,67 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 start_time = time.time()
 
             clean_sentence = sentence[:max_seq_len]
+            clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
+
 
             # Normalize the contracted words from Articles
             clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw,
                                              clean_sentence)
-            clean_sentence = ntg.expansion(clean_sentence)
+
             clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
                                                     clean_sentence)
 
+            # clean_sentence = ntg.mwe_tokenizer.tokenize(tokenizer.word_tokenize(clean_sentence))
+            
+            # noisy_sentence =  ' '.join(clean_sentence)
+
+            # clean_sentence = process_pool.map(normalize_words_accents, clean_sentence)
+            # clean_sentence = process_pool.map(normalize_subwords_accents, clean_sentence)
+
+            # noisy_sentence = detokenizer.detokenize(clean_sentence, return_str=True)
+
+            # noisy_sentence = ' '.join(clean_sentence)
             noisy_sentence = clean_sentence
+            noisy_sentence = ntg.mwe_tokenizer.tokenize(tokenizer.word_tokenize(noisy_sentence))
 
-            noisy_sentence = ntg.contraction(noisy_sentence)
-
+            noisy_sentence = process_pool.map(accents_word, noisy_sentence)
+            # noisy_sentence = process_pool.map(accents_subword, noisy_sentence)
+            noisy_sentence = ' '.join(noisy_sentence)
             noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
-                                             clean_sentence)
+                                             noisy_sentence)
 
             noisy_sentence = ntg.contract_pattern.sub(
                 ntg.contract_repl, noisy_sentence)
 
-            for re_exp, repl in ntg.text_patterns:
-                noisy_sentence = re_exp.sub(repl, noisy_sentence)
+            # for re_exp, repl in ntg.text_patterns:
+            #     if random.getrandbits(1):
+            #         noisy_sentence = re_exp.sub(repl, noisy_sentence)
 
-            noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
+            noisy_sentence = noisy_sentence.split()
 
-            if random.getrandbits(1):
+            try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
+                ntg.rule = random.choice(rules)
                 noisy_sentence = process_pool.map(
                     noisify, noisy_sentence[1:])
                 noisy_sentence.insert(0, sos)
-            # else:
-            #     rule = random.choice(ntg.rules)
-            #     for i, e in enumerate(noisy_sentence):
-            #         if ntg.re_accepted.search(e) \
-            #                 and (i > 0 and e[0].islower()):
-            #             noisy_sentence[i] = ntg.dispatch_rules(rule, e)
+            except IndexError:
+                # It is faster than checking length of the list
+                pass
 
-            noisy_sentence = ' '.join(noisy_sentence)
+            # noisy_sentence = ' '.join(noisy_sentence)
+
+            clean_sentence = clean_sentence.split()
+
+            clean_sentence = detokenizer.detokenize(clean_sentence, return_str=True) \
+                .replace('``', '"') \
+                .replace("''", '"') \
+                .replace("( ", "(")
+
+            noisy_sentence = detokenizer.detokenize(noisy_sentence, return_str=True) \
+                .replace('``', '"') \
+                .replace("''", '"') \
+                .replace("( ", "(")
 
             if char_level_emb:
                 clean_sentence = ' '.join(list(clean_sentence)) \
@@ -156,19 +209,23 @@ def collect_dataset(src, tgt, max_seq_len=50,
         encoder_file.truncate(encoder_file.tell() - 2)
 
 
-accent_dict = csv_to_dict(os.path.join(
-    'training', 'data', 'common_accented_words.dic'))
+accent_subwords_dict = csv_to_dict(os.path.join(
+    'training', 'data', 'accented_subwords.dic'))
 
-contract_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_contracted_words.dic'))
+accent_words_dict = csv_to_dict(
+    os.path.join('training', 'data', 'accented_words.dic'))
 
-phonetic_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_phonetically_styled_words.dic'))
+phonetic_subwords_dict = csv_to_dict(
+    os.path.join('training', 'data', 'phonetically_styled_subwords.dic'))
 
-expansion_dict = {v: k for k, v in contract_dict.items()}
+phonetic_words_dict = csv_to_dict(
+    os.path.join('training', 'data', 'phonetically_styled_words.dic'))
 
 with open(os.path.join('training', 'data', 'hyph_fil.tex'), 'r') as f:
     hyphenator_dict = f.read()
 
-ntg = TextNoisifier(accent_dict, phonetic_dict, contract_dict,
-                    expansion_dict, hyphenator_dict)
+ntg = TextNoisifier(accent_subwords_dict=accent_subwords_dict,
+                    accent_words_dict=accent_words_dict,
+                    phonetic_subwords_dict=phonetic_subwords_dict,
+                    phonetic_words_dict=phonetic_words_dict,
+                    hyphenator_dict=hyphenator_dict)
