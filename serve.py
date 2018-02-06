@@ -1,6 +1,6 @@
 """Contains the Serve class."""
 import os
-import nltk.tokenize as tokenizer
+from nltk.tokenize import sent_tokenize
 
 class Serve:
     """Serve an instance of the trained model."""

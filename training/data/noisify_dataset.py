@@ -143,16 +143,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
             clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
                                                     clean_sentence)
 
-            # clean_sentence = ntg.mwe_tokenizer.tokenize(tokenizer.word_tokenize(clean_sentence))
-            
-            # noisy_sentence =  ' '.join(clean_sentence)
 
-            # clean_sentence = process_pool.map(normalize_words_accents, clean_sentence)
-            # clean_sentence = process_pool.map(normalize_subwords_accents, clean_sentence)
-
-            # noisy_sentence = detokenizer.detokenize(clean_sentence, return_str=True)
-
-            # noisy_sentence = ' '.join(clean_sentence)
             noisy_sentence = clean_sentence
             noisy_sentence = ntg.mwe_tokenizer.tokenize(tokenizer.word_tokenize(noisy_sentence))
 
