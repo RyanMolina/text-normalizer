@@ -68,8 +68,6 @@ class TextNoisifier:
              re.IGNORECASE), r'\1\3')
         ]
 
-        self.rule = None
-
         self.raw_daw = \
             re.compile(r'([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)',
                        re.IGNORECASE)
@@ -232,32 +230,16 @@ class TextNoisifier:
                 and (sos or word[0].islower()) \
                 and "'" not in word:
 
-            if self.rule:
-                return self.dispatch_rules(self.rule, word)
-
-            if '-' in word:
-                if random.getrandbits(1):
-                    noisy_word = self.group_repeating_units(word)
-                else:
-                    noisy_word = noisy_word.replace('-', random.choice([' ', '']))
+            if random.random() > 0.95:  # slim chance
+                selected = random.choice(['repeat_characters', 'misspell'])
             else:
-                 noisy_word = self.group_repeating_units(word)
+                selected = random.choice(['remove_vowels',
+                                            'phonetic_style',
+                                            'group_repeating_units',
+                                            'accent_style'])
 
-            if noisy_word == word:
-                if random.random() > 0.95:  # slim chance
-                    selected = random.choice(['repeat_characters', 'misspell'])
-                else:
-                    selected = random.choice(['remove_vowels',
-                                              'phonetic_style',
-                                              'group_repeating_units',
-                                              'accent_style'])
-                if selected == 'group_repeating_units':
-                    if '-' in word:
-                        if random.getrandbits(1):
-                            word = word.replace('-', random.choice([' ', '']))
-                word = self.dispatch_rules(selected, word)
-            else:
-                word = noisy_word
+            word = self.dispatch_rules(selected, word)
+
         return word
 
     def dispatch_rules(self, rule, word):

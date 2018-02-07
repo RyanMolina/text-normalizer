@@ -136,8 +136,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
             clean_sentence = sentence[:max_seq_len]
             clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
 
-            clean_sentence = ' '.join(clean_sentence)
-
             # Normalize the "r|d(oon, in, aw, ito mistakes" from Articles
             clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw,
                                              clean_sentence)
@@ -148,14 +146,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
 
             noisy_sentence = clean_sentence
 
-            # Tokenize the sentence
-            # noisy_sentence = ntg.mwe_tokenizer.tokenize(
-            #     tokenizer.word_tokenize(noisy_sentence))
-
-            #  Accent Stylization
-            # noisy_sentence = process_pool.map(accents_word, noisy_sentence)
-            # noisy_sentence = ' '.join(noisy_sentence)
-
             #  Contraction "Siya ay -> Siya'y"
             noisy_sentence = ntg.contract_pattern.sub(
                 ntg.contract_repl, noisy_sentence)
@@ -164,11 +154,10 @@ def collect_dataset(src, tgt, max_seq_len=50,
             noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
                                              noisy_sentence)
 
-            noisy_sentence = noisy_sentence.split()
+            noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
 
             try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
-                ntg.rule = random.choice(rules)
                 noisy_sentence = process_pool.map(
                     noisify, noisy_sentence[1:])
                 noisy_sentence.insert(0, sos)
@@ -176,32 +165,12 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 # It is faster than checking length of the list
                 pass
 
+            noisy_sentence = ' '.join(noisy_sentence)
             if char_level_emb:
-                clean_sentence = clean_sentence.split()
-                clean_sentence = detokenizer.detokenize(
-                    clean_sentence, return_str=True) \
-                    .replace('``', '"') \
-                    .replace("''", '"') \
-                    .replace("( ", "(")
-
-                noisy_sentence = detokenizer.detokenize(
-                    noisy_sentence, return_str=True) \
-                    .replace('``', '"') \
-                    .replace("''", '"') \
-                    .replace("( ", "(")
-
                 clean_sentence = ' '.join(list(clean_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
                 noisy_sentence = ' '.join(list(noisy_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
-            else:
-                clean_sentence = ''.join(clean_sentence) \
-                    .replace('``', '"') \
-                    .replace("''", '"')
-
-                noisy_sentence = ' '.join(noisy_sentence) \
-                    .replace('``', '"') \
-                    .replace("''", '"')
 
             if clean_sentence and noisy_sentence:
                 decoder_file.write(clean_sentence + "\n")
