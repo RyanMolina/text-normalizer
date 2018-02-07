@@ -2,6 +2,7 @@
 import os
 from nltk.tokenize import sent_tokenize
 
+
 class Serve:
     """Serve an instance of the trained model."""
 
@@ -97,7 +98,6 @@ if __name__ == '__main__':
     #  Imports when running as a script
     import tensorflow as tf
     from seq2seq import predictor, utils
-
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     ARGS = parse_args()
@@ -106,11 +106,11 @@ if __name__ == '__main__':
                            model_name=ARGS.model_name,
                            checkpoint=ARGS.checkpoint,
                            char_emb=ARGS.char_emb)
+
         #  Input mode using file and generate results.txt file
         if ARGS.input_file:
             normalized = []
             path, _ = os.path.split(ARGS.input_file)
-            print(path)
             with open(ARGS.input_file, 'r') as infile,\
                     open(os.path.join(path, 'results.txt'), 'w') as outfile:
                 contents = infile.read()
@@ -130,11 +130,18 @@ if __name__ == '__main__':
                     dec_rows = contents.splitlines()
 
                     for i, e in enumerate(normalized):
-                        print('-' * 30)
-                        print('input:  ' + enc_rows[i])
-                        print("system: " + e)
-                        print("expect: " + dec_rows[i])
-                        if e.lower() == dec_rows[i].lower():
+                        if not ARGS.char_emb:
+                            print('-' * 30)
+                            print('input:  ' + enc_rows[i])
+                            print("system: " + e)
+                            print("expect: " + dec_rows[i])
+                        else:
+                            print('-' * 30)
+                            print('input:  ' + enc_rows[i].replace(' ', '').replace('<space>', ' '))
+                            print("system: " + e.replace(' ', '').replace('<space>', ' '))
+                            print("expect: " + dec_rows[i].replace(' ', '').replace('<space>', ' '))
+
+                        if e.lower()[:280] == dec_rows[i].lower()[:280]:
                             correct += 1
                     print("Correctly normalized: {} Total: {} Accuracy: {}"
                           .format(correct,

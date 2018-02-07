@@ -2,6 +2,7 @@
 import re
 import random
 import string
+from pprint import pprint
 # from utils.tokenizer import mwe_tokenize
 import nltk.tokenize as tokenizer
 from .hyphenator import Hyphenator
@@ -14,16 +15,7 @@ class TextNoisifier:
                  phonetic_subwords_dict, phonetic_words_dict, hyphenator_dict):
         """Initialize all dictionaries and Regex for string manipulation."""
         self.accent_subwords_dict = accent_subwords_dict
-        self.normalized_accent_subwords_dict = \
-            {v: k
-             for k, vlist in accent_subwords_dict.items()
-             for v in vlist}
-
         self.accent_words_dict = accent_words_dict
-        self.normalized_accent_words_dict = \
-            {v: k
-             for k, vlist in accent_words_dict.items()
-             for v in vlist}
 
         self.phonetic_words_dict = phonetic_words_dict
         self.phonetic_subwords_dict = phonetic_subwords_dict
@@ -36,7 +28,7 @@ class TextNoisifier:
         self.vowels += self.vowels.upper()
         self.consonants = "bcdfghjklmnpqrstvwxyz"
         self.consonants += self.consonants.upper()
-    
+
         matches = re.findall(r"\{(.*?)\}",
                              hyphenator_dict,
                              re.MULTILINE | re.DOTALL)
@@ -51,6 +43,9 @@ class TextNoisifier:
                 self.mwes.append(tuple(words))
                 words[0] = words[0].capitalize()
                 self.mwes.append(tuple(words))
+        print("============= Multi-word Expressions =================")
+        pprint(self.mwes)
+
         self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes)
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
@@ -109,7 +104,6 @@ class TextNoisifier:
         if len(word) == 4 and word[0] in self.vowels:
             if random.getrandbits(1):
                 return word[1:]
-
         if not self.re_adj_vowels.search(word) and len(word) > 3:
             w_len = len(word)
             center = w_len // 2
@@ -132,7 +126,6 @@ class TextNoisifier:
                 word = word[0] \
                     + word[1:-1].translate(remove_vowel_rule) \
                     + word[-1]
-
         elif len(word) == 2 and word[-1] in self.vowels:
             word = word[0]
         return word
@@ -174,41 +167,27 @@ class TextNoisifier:
     def phonetic_style_words(self, word):
         """Return a phonetically styled word."""
         return self._subword_substitution(word, self.phonetic_words_dict)
-        
+
     @staticmethod
     def _subword_substitution(word, substitution_dict):
         for k, v in substitution_dict.items():
             try:
                 is_upper = word[0].isupper()
+                is_allcaps = str.isupper(word)
             except IndexError:
                 continue
             word = word.lower()
             repl = random.choice(v) if isinstance(v, list) else v
             word = word.replace(k, repl)
-            if is_upper:
-                word = word.capitalize()
-        return word
-
-    def _mwe_substitution(self, word, substitution_dict):
-        # words = mwe_tokenize(text, self.mwes)
-        try:
-            is_upper = word[0].isupper()
-            word = word.lower()
-            repl = substitution_dict.get(word, [word])
-            if isinstance(repl, list):
-                word = random.choice(repl)
-            else:
-                word = repl
             word = word.replace("'", '')
-        except KeyError:
-            pass
-        finally:
             if is_upper:
                 word = word.capitalize()
+                if is_allcaps:
+                    word = word.upper()
         return word
 
     def phonetic_style(self, text):
-        result = self.phonetic_style_words(text)    
+        result = self.phonetic_style_words(text)
         return self.phonetic_style_subwords(result)
 
     def accent_style_subwords(self, text):
@@ -218,14 +197,6 @@ class TextNoisifier:
     def accent_style_words(self, text):
         """Accent style a word."""
         return self._subword_substitution(text, self.accent_words_dict)
-
-    def normalize_accent_style_words(self, text):
-        """Normalize accented words."""
-        return self._subword_substitution(text, self.normalized_accent_words_dict)
-
-    def normalize_accent_style_subwords(self, text):
-        """Normalize accent subwords."""
-        return self._subword_substitution(text, self.normalized_accent_subwords_dict)
 
     def group_repeating_units(self, word):
         """Group repeating units by grouping the syllables."""
@@ -264,20 +235,29 @@ class TextNoisifier:
             if self.rule:
                 return self.dispatch_rules(self.rule, word)
 
-            noisy_word = self.group_repeating_units(word)
+            if '-' in word:
+                if random.getrandbits(1):
+                    noisy_word = self.group_repeating_units(word)
+                else:
+                    noisy_word = noisy_word.replace('-', random.choice([' ', '']))
+            else:
+                 noisy_word = self.group_repeating_units(word)
 
-            if '-' in noisy_word:
-                word = noisy_word.replace('-', random.choice([' ', '']))
-            elif noisy_word == word:
-                if random.random() > 0.95:  # 10% chance only
+            if noisy_word == word:
+                if random.random() > 0.95:  # slim chance
                     selected = random.choice(['repeat_characters', 'misspell'])
                 else:
                     selected = random.choice(['remove_vowels',
-                                              'phonetic_style'])
+                                              'phonetic_style',
+                                              'group_repeating_units',
+                                              'accent_style'])
+                if selected == 'group_repeating_units':
+                    if '-' in word:
+                        if random.getrandbits(1):
+                            word = word.replace('-', random.choice([' ', '']))
                 word = self.dispatch_rules(selected, word)
             else:
                 word = noisy_word
-
         return word
 
     def dispatch_rules(self, rule, word):
@@ -286,6 +266,7 @@ class TextNoisifier:
             'remove_vowels': self.remove_vowels(word),
             'phonetic_style': self.phonetic_style(word),
             'misspell': self.misspell(word),
+            'accent_style': self.accent_style_words(word),
             'repeat_characters': self.repeat_characters(word),
             'group_repeating_units': self.group_repeating_units(word)
         }.get(rule, word)
