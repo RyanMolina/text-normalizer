@@ -1,6 +1,7 @@
 """Contains the Serve class."""
 import os
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize.moses import MosesDetokenizer
 
 
 class Serve:
@@ -17,6 +18,28 @@ class Serve:
         hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
 
+        self.detokenizer = MosesDetokenizer()
+        self.common_informal_words = { 'meron': 'mayroon',
+                                      'penge': 'pahingi',
+                                      'kundi': 'kung hindi',
+                                      'ayoko': 'ayaw ko',
+                                      'pede': 'puwede',
+                                      'ambilis': 'ang bilis',
+                                      'anuba': 'ano ba',
+                                      'answerte': 'ang suwerte',
+                                      'konting': 'kaunting',
+                                      'Meron': 'Mayroon',
+                                      'Penge': 'Pahingi',
+                                      'Kundi': 'Kung hindi',
+                                      'Ayoko': 'Ayaw ko',
+                                      'Pede': 'Puwede',
+                                      'Ambilis': 'Ang bilis',
+                                      'Anuba': 'Ano ba',
+                                      'Answerte': 'Ang suwerte',
+                                      'Konting': 'Kaunting',
+                                      'Peram': 'Pahiram',
+                                      'peram': 'pahiram',
+                                     }
         self.char_emb = char_emb
         self.normalizer = predictor.Predictor(sess,
                                               dataset_dir=data_dir,
@@ -34,19 +57,34 @@ class Serve:
         """
         output = ""
         for sentence in sent_tokenize(input_data):
+            
+            # if str.isupper(sentence):
+            #     sentence = sentence.lower()
+            for k, v in self.common_informal_words.items():
+                sentence = sentence.replace(k, v)
+
             if self.char_emb:
-                tokens = self._char_emb_format(sentence)
+                tokens = ' '.join(word_tokenize(sentence)) \
+                    .replace('``', '"') \
+                    .replace("''", '"')
+
+                tokens = self._char_emb_format(tokens)
             else:
                 tokens = sentence
 
+            # tokens = tokens.lower()
             normalized = self.normalizer.predict(tokens)
+
+
 
             if self.char_emb:
                 normalized = normalized.replace(' ', '') \
                                        .replace('<space>', ' ')
 
-            output += normalized
-        return output
+                normalized = self.detokenizer.detokenize(normalized.split(), return_str=True)
+
+            output += normalized + " "
+        return output.strip()
 
     @staticmethod
     def _char_emb_format(text):
