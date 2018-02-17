@@ -1,7 +1,3 @@
-train
-    1x128 model per rules it only cost 4mb per model.
-    TRY IT ASAP.
-
 Perplexity is often used for measuring the usefulness of a language model
 (basically a probability distribution over sentence, phrase, words, etc).
 
@@ -41,6 +37,13 @@ in Tagalog. Then, generate the equivalent noisy text using various rules such as
  - Accent stylization
  - Phonetic stylization
  - Misspelling
+
+The collection process is fairly easy, since most of the mainstream News Sites in the Philippines has
+an archive section. The archive section was scraped using Scrapy and we only scraped the Title, Article and the
+URL. For the Tagalog Wikipedia dataset, we used the database dump from November 1, 2016 and extract every article.
+Then, we normalized the spaces, the character set used from utf-8 to ascii,
+some words that is still in the non-canonical form such as "penge", "meron", "kundi", and etc. We also removed the
+articles Location Tag (MANILA, Philippines - <Article>) and the reporter's signature at the end of every article (--FRJ, GMA NEWS) [Articles from new site only].
 
 Then train the parallel clean and noisy text using the Sequence to Sequence Recurrent Neural Network.
 
