@@ -1,9 +1,15 @@
 import re
 import argparse
 
-spaces = re.compile(r'\s+')
-ascii_only = re.compile(r'[^\x00-\x7f]')
+spaces = re.compile(r'\s+') # Multiple spaces
+ascii_only = re.compile(r'[^\x00-\x7f]') # Removing the non-ascii characters
 news_location = re.compile(r'^(\w+\s\w+|\w+),\s\w+\s-\s') # MANILA, Philippines - <Article>
+
+common_informal_words = {'meron': 'mayroon',
+                         'penge': 'pahingi',
+                         'kundi': 'kung hindi',
+                         'tsaka': 'saka',
+                         }
 
 def main():
     with open(args.src, 'r') as in_file, \

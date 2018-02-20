@@ -3,8 +3,10 @@ import os
 import random
 import time
 from multiprocessing import Pool
+# from utils import tokenizer
+import nltk.tokenize as tokenizer
+from nltk.tokenize.moses import MosesDetokenizer
 from .textnoisifier import TextNoisifier
-from utils import tokenizer
 
 
 def csv_to_dict(file):
@@ -14,7 +16,7 @@ def csv_to_dict(file):
         rows = f.read().splitlines()
         for row in rows:
             k, v = row.split(',')
-            d.update({k: v})
+            d.setdefault(k, []).append(v)
     return d
 
 
@@ -32,15 +34,32 @@ def ngram(text):
     """Given a text, return the ngrams(3, 7)."""
     def find_ngrams(input_list, n):
         return zip(*[input_list[i:] for i in range(n)])
+
     ngrams = [grams
               for i in range(3, 7)
               for grams in find_ngrams(tokenizer.word_tokenize(text), i)]
     return ngrams
 
 
+def accents_subword(text):
+    """Wrap function for multiprocessing.Pool()."""
+    if ntg.re_accepted.search(text):
+        return ntg.accent_style_subwords(text)
+    else:
+        return text
+
+
+def accents_word(text):
+    """Wrap function for multiprocessing.Pool()."""
+    if ntg.re_accepted.search(text):
+        return ntg.accent_style_words(text)
+    else:
+        return text
+
+
 def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
-                    shuffle=False, size=1000000):
+                    shuffle=False, size=10000000):
     """Generate a parallel clean and noisy text from a given clean text."""
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
@@ -48,7 +67,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
         sentences = [content.strip()
                      for content in contents.splitlines()
                      if content]
-
 
     process_pool = Pool()
     dataset = []
@@ -62,31 +80,42 @@ def collect_dataset(src, tgt, max_seq_len=50,
     if augment_data:
         print('  [+] N-grams to augment the data.')
         ngrams = process_pool.map(ngram, dataset[:50000])
-        print('    [-] Flattening n-grams...') 
+        print('    [-] Flattening n-grams...')
         dataset_ngrams = [' '.join(list(gram))
                           for grams in ngrams
                           for gram in grams
                           if gram]
         print('    [-] Shuffling n-grams')
         random.shuffle(dataset_ngrams)
-        dataset.extend(dataset_ngrams[:size*2])
+        dataset.extend(dataset_ngrams[:size*5])
         print('    [-] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
 
     if shuffle:
         print('  [+] Randomizing the position of the dataset')
-        dataset = random.sample(dataset, len(dataset))
+        random.shuffle(dataset)
 
     if size:
         dataset = dataset[:size]
 
+    detokenizer = MosesDetokenizer()
+
+    rules = ['group_repeating_units',
+             'phonetic_style',
+             'remove_vowels',
+             'accent_style',
+             None]
+
     sent_number = 0
     start_time = time.time()
 
+    print('   => Dataset Size: {}'.format(len(dataset)))
     print('   => collecting clean and noisy sentences')
+
     filename, _ = os.path.splitext(tgt)
     noisified_file = "{}.{}".format(filename, 'enc')
+
     with open(tgt, 'w', encoding="utf8") as decoder_file, \
             open(noisified_file, 'w', encoding='utf8') as encoder_file:
 
@@ -105,34 +134,38 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 start_time = time.time()
 
             clean_sentence = sentence[:max_seq_len]
+            clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
 
-            # Normalize first the contracted words from News Site Articles
-            clean_sentence = ntg.expansion(clean_sentence)
+            # Normalize the "r|d(oon, in, aw, ito mistakes" from Articles
+            clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw,
+                                             clean_sentence)
+
+            # Normalize the contracted words (Siya ay -> Siya'y) from Articles
             clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
                                                     clean_sentence)
 
             noisy_sentence = clean_sentence
 
-            if random.getrandbits(1):
-                noisy_sentence = ntg.contraction(noisy_sentence)
-
+            #  Contraction "Siya ay -> Siya'y"
             noisy_sentence = ntg.contract_pattern.sub(
                 ntg.contract_repl, noisy_sentence)
 
-            for re_exp, repl in ntg.text_patterns:
-                noisy_sentence = re_exp.sub(repl, noisy_sentence)
+            #  Noisify r|d(oon, in, aw, ito)
+            noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
+                                             noisy_sentence)
 
             noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
 
-            sos = ntg.noisify(noisy_sentence[0], sos=True)
-
-            noisy_sentence = process_pool.map(
-                noisify, noisy_sentence[1:])
-
-            noisy_sentence.insert(0, sos)
+            try:
+                sos = ntg.noisify(noisy_sentence[0], sos=True)
+                noisy_sentence = process_pool.map(
+                    noisify, noisy_sentence[1:])
+                noisy_sentence.insert(0, sos)
+            except IndexError:
+                # It is faster than checking length of the list
+                pass
 
             noisy_sentence = ' '.join(noisy_sentence)
-
             if char_level_emb:
                 clean_sentence = ' '.join(list(clean_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
@@ -143,23 +176,27 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 decoder_file.write(clean_sentence + "\n")
                 encoder_file.write(noisy_sentence + "\n")
 
-        decoder_file.truncate(decoder_file.tell() - 1)
-        encoder_file.truncate(encoder_file.tell() - 1)
+        decoder_file.truncate(decoder_file.tell() - 2)
+        encoder_file.truncate(encoder_file.tell() - 2)
 
 
-accent_dict = csv_to_dict(os.path.join(
-    'training', 'data', 'common_accented_words.dic'))
+accent_subwords_dict = csv_to_dict(os.path.join(
+    'training', 'data', 'accented_subwords.dic'))
 
-contract_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_contracted_words.dic'))
+accent_words_dict = csv_to_dict(
+    os.path.join('training', 'data', 'accented_words.dic'))
 
-phonetic_dict = csv_to_dict(
-    os.path.join('training', 'data', 'common_phonetically_styled_words.dic'))
+phonetic_subwords_dict = csv_to_dict(
+    os.path.join('training', 'data', 'phonetically_styled_subwords.dic'))
 
-expansion_dict = {v: k for k, v in contract_dict.items()}
+phonetic_words_dict = csv_to_dict(
+    os.path.join('training', 'data', 'phonetically_styled_words.dic'))
 
 with open(os.path.join('training', 'data', 'hyph_fil.tex'), 'r') as f:
     hyphenator_dict = f.read()
 
-ntg = TextNoisifier(accent_dict, phonetic_dict, contract_dict,
-                    expansion_dict, hyphenator_dict)
+ntg = TextNoisifier(accent_subwords_dict=accent_subwords_dict,
+                    accent_words_dict=accent_words_dict,
+                    phonetic_subwords_dict=phonetic_subwords_dict,
+                    phonetic_words_dict=phonetic_words_dict,
+                    hyphenator_dict=hyphenator_dict)

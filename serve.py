@@ -1,7 +1,7 @@
 """Contains the Serve class."""
 import os
-import argparse
-from utils.tokenizer import word_tokenize, sent_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize.moses import MosesDetokenizer
 
 
 class Serve:
@@ -18,6 +18,28 @@ class Serve:
         hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
 
+        self.detokenizer = MosesDetokenizer()
+        self.common_informal_words = { 'meron': 'mayroon',
+                                      'penge': 'pahingi',
+                                      'kundi': 'kung hindi',
+                                      'ayoko': 'ayaw ko',
+                                      'pede': 'puwede',
+                                      'ambilis': 'ang bilis',
+                                      'anuba': 'ano ba',
+                                      'answerte': 'ang suwerte',
+                                      'konting': 'kaunting',
+                                      'Meron': 'Mayroon',
+                                      'Penge': 'Pahingi',
+                                      'Kundi': 'Kung hindi',
+                                      'Ayoko': 'Ayaw ko',
+                                      'Pede': 'Puwede',
+                                      'Ambilis': 'Ang bilis',
+                                      'Anuba': 'Ano ba',
+                                      'Answerte': 'Ang suwerte',
+                                      'Konting': 'Kaunting',
+                                      'Peram': 'Pahiram',
+                                      'peram': 'pahiram',
+                                     }
         self.char_emb = char_emb
         self.normalizer = predictor.Predictor(sess,
                                               dataset_dir=data_dir,
@@ -35,19 +57,34 @@ class Serve:
         """
         output = ""
         for sentence in sent_tokenize(input_data):
+            
+            # if str.isupper(sentence):
+            #     sentence = sentence.lower()
+            for k, v in self.common_informal_words.items():
+                sentence = sentence.replace(k, v)
+
             if self.char_emb:
-                tokens = self._char_emb_format(sentence)
+                tokens = ' '.join(word_tokenize(sentence)) \
+                    .replace('``', '"') \
+                    .replace("''", '"')
+
+                tokens = self._char_emb_format(tokens)
             else:
-                tokens = sentence  # word-level emb
-    
+                tokens = sentence
+
+            # tokens = tokens.lower()
             normalized = self.normalizer.predict(tokens)
+
+
 
             if self.char_emb:
                 normalized = normalized.replace(' ', '') \
                                        .replace('<space>', ' ')
 
-            output += normalized
-        return output
+                normalized = self.detokenizer.detokenize(normalized.split(), return_str=True)
+
+            output += normalized + " "
+        return output.strip()
 
     @staticmethod
     def _char_emb_format(text):
@@ -61,6 +98,7 @@ def parse_args():
         args: contains the parsed arguments
 
     """
+    import argparse
     parser = argparse.ArgumentParser(
         description="Dir of your selected model and the checkpoint.")
 
@@ -98,7 +136,6 @@ if __name__ == '__main__':
     #  Imports when running as a script
     import tensorflow as tf
     from seq2seq import predictor, utils
-
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     ARGS = parse_args()
@@ -107,18 +144,18 @@ if __name__ == '__main__':
                            model_name=ARGS.model_name,
                            checkpoint=ARGS.checkpoint,
                            char_emb=ARGS.char_emb)
+
         #  Input mode using file and generate results.txt file
         if ARGS.input_file:
             normalized = []
             path, _ = os.path.split(ARGS.input_file)
-            print(path)
             with open(ARGS.input_file, 'r') as infile,\
                     open(os.path.join(path, 'results.txt'), 'w') as outfile:
                 contents = infile.read()
 
-                rows = contents.splitlines()
+                enc_rows = contents.splitlines()
 
-                for row in rows:
+                for row in enc_rows:
                     result = NORMALIZER.model_api(row)
                     normalized.append(result)
                     outfile.write(result + "\n")
@@ -128,12 +165,21 @@ if __name__ == '__main__':
                 correct = 0
                 with open(ARGS.expected_file, 'r') as expected_file:
                     contents = expected_file.read()
-                    rows = contents.splitlines()
+                    dec_rows = contents.splitlines()
 
                     for i, e in enumerate(normalized):
-                        print("system: " + e)
-                        print("expect: " + rows[i])
-                        if e == rows[i]:
+                        if not ARGS.char_emb:
+                            print('-' * 30)
+                            print('input:  ' + enc_rows[i])
+                            print("system: " + e)
+                            print("expect: " + dec_rows[i])
+                        else:
+                            print('-' * 30)
+                            print('input:  ' + enc_rows[i].replace(' ', '').replace('<space>', ' '))
+                            print("system: " + e.replace(' ', '').replace('<space>', ' '))
+                            print("expect: " + dec_rows[i].replace(' ', '').replace('<space>', ' '))
+
+                        if e.lower()[:280] == dec_rows[i].lower()[:280]:
                             correct += 1
                     print("Correctly normalized: {} Total: {} Accuracy: {}"
                           .format(correct,

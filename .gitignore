@@ -15,7 +15,12 @@ training/model/*
 
 # Corpus collected
 training/data/corpus/*
+!training/data/corpus/*.py
+!training/data/corpus/*.sh
 !training/data/corpus/.gitkeep
+
+testing/*
+!testing/.gitkeep
 
 # Dataset generated
 training/data/dataset/*
