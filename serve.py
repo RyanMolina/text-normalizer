@@ -19,7 +19,7 @@ class Serve:
             os.path.join(model_dir, 'hparams.json'))
 
         self.detokenizer = MosesDetokenizer()
-        self.common_informal_words = { 'meron': 'mayroon',
+        self.common_informal_words = {'meron': 'mayroon',
                                       'penge': 'pahingi',
                                       'kundi': 'kung hindi',
                                       'ayoko': 'ayaw ko',
@@ -38,8 +38,8 @@ class Serve:
                                       'Answerte': 'Ang suwerte',
                                       'Konting': 'Kaunting',
                                       'Peram': 'Pahiram',
-                                      'peram': 'pahiram',
-                                     }
+                                      'peram': 'pahiram'}
+
         self.char_emb = char_emb
         self.normalizer = predictor.Predictor(sess,
                                               dataset_dir=data_dir,
@@ -55,13 +55,18 @@ class Serve:
         Returns:
             string: normalized text
         """
+        # TODO: Detect if word is in normal form to avoid FP results.
+        # TODO: Allow punctuations on input.
+        # TODO: Create a model to detect named-entity
+        # TODO: Detokenize here as last step.
+
         output = ""
         for sentence in sent_tokenize(input_data):
-            
+
             # if str.isupper(sentence):
             #     sentence = sentence.lower()
-            for k, v in self.common_informal_words.items():
-                sentence = sentence.replace(k, v)
+            # for k, v in self.common_informal_words.items():
+            #     sentence = sentence.replace(k, v)
 
             if self.char_emb:
                 tokens = ' '.join(word_tokenize(sentence)) \
@@ -75,13 +80,12 @@ class Serve:
             # tokens = tokens.lower()
             normalized = self.normalizer.predict(tokens)
 
-
-
             if self.char_emb:
                 normalized = normalized.replace(' ', '') \
                                        .replace('<space>', ' ')
 
-                normalized = self.detokenizer.detokenize(normalized.split(), return_str=True)
+                normalized = self.detokenizer.detokenize(normalized.split(),
+                                                         return_str=True)
 
             output += normalized + " "
         return output.strip()
@@ -102,6 +106,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Dir of your selected model and the checkpoint.")
 
+    parser.register("type", "bool", lambda v: v.lower() == "true")
+
     parser.add_argument('model_name', type=str,
                         help="""
                         Name of the model to use.
@@ -113,7 +119,9 @@ def parse_args():
                         Specify the checkpoint filename.
                         (Default: latest checkpoint)
                         """)
-    parser.add_argument('--char_emb', default=False, type=bool,
+    parser.add_argument('--char_emb',
+                        type="bool", nargs="?", const=False,
+                        default=False,
                         help="""
                         Char-level or word-level embedding
                         """
@@ -128,7 +136,10 @@ def parse_args():
                         If you want to see the accuracy.
                         """
                         )
-
+    parser.add_argument('--gpu_mode',
+                        type="bool", nargs="?", const=False,
+                        default=False,
+                        help="""Use GPU in computation instead of CPU.""")
     return parser.parse_args()
 
 
@@ -136,9 +147,14 @@ if __name__ == '__main__':
     #  Imports when running as a script
     import tensorflow as tf
     from seq2seq import predictor, utils
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     ARGS = parse_args()
+
+    if not ARGS.gpu_mode:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+    # TODO: Break-word <= character limit
+
     with tf.Session() as sess:
         NORMALIZER = Serve(sess=sess,
                            model_name=ARGS.model_name,
@@ -175,9 +191,12 @@ if __name__ == '__main__':
                             print("expect: " + dec_rows[i])
                         else:
                             print('-' * 30)
-                            print('input:  ' + enc_rows[i].replace(' ', '').replace('<space>', ' '))
-                            print("system: " + e.replace(' ', '').replace('<space>', ' '))
-                            print("expect: " + dec_rows[i].replace(' ', '').replace('<space>', ' '))
+                            print('input:  ' + enc_rows[i]
+                                  .replace(' ', '').replace('<space>', ' '))
+                            print("system: " + e.replace(' ', '')
+                                  .replace('<space>', ' '))
+                            print("expect: " + dec_rows[i]
+                                  .replace(' ', '').replace('<space>', ' '))
 
                         if e.lower()[:280] == dec_rows[i].lower()[:280]:
                             correct += 1

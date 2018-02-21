@@ -11,10 +11,9 @@ from .hyphenator import Hyphenator
 class TextNoisifier:
     """Handles all text noisification rules."""
 
-    def __init__(self, accent_subwords_dict, accent_words_dict,
+    def __init__(self, accent_words_dict,
                  phonetic_subwords_dict, phonetic_words_dict, hyphenator_dict):
         """Initialize all dictionaries and Regex for string manipulation."""
-        self.accent_subwords_dict = accent_subwords_dict
         self.accent_words_dict = accent_words_dict
 
         self.phonetic_words_dict = phonetic_words_dict
@@ -32,6 +31,7 @@ class TextNoisifier:
         matches = re.findall(r"\{(.*?)\}",
                              hyphenator_dict,
                              re.MULTILINE | re.DOTALL)
+
         patterns = matches[0]
         exceptions = matches[1]
         self.hyphenator = Hyphenator(patterns, exceptions)
@@ -54,13 +54,14 @@ class TextNoisifier:
                                            re.IGNORECASE)
         self.contract_repl = r"\1'\2"
 
+        # FIXME: Has the tendency to normalize words like "Antipolo", "Antik"
         self.text_patterns = [
             # Ang baho -> Ambaho
             (re.compile(r'(\b[aA])(ng\s)(\b[bp]\w+\b)'), r'\1m\3'),
             # Ang dami -> Andami
             (re.compile(r'(\b[aA]n)(g\s)(\b[gkhsldt]\w+\b)'), r'\1\3'),
             # Ano ba -> Anuba
-            (re.compile(r'(\b[aA]n)(o\s)(\b\w{2}\b)'), r'\1u\3'),
+            (re.compile(r'(\b[aA]n)(os)(\b\w{2}\b)'), r'\1u\3'),
             # Pagkain -> Pag kain
             (re.compile(r'(pag)(\w+)'), r'\1 \2'),
             # na naman -> nanaman
@@ -68,8 +69,14 @@ class TextNoisifier:
              re.IGNORECASE), r'\1\3')
         ]
 
+        # TODO: Implement this randomly and see the result if it works.
+        self.ng_nang = [
+            (re.compile(r'\bng\b'), r'nang'),
+            (re.compile(r'r\bnang\b'), r'ng'),
+        ]
+
         self.raw_daw = \
-            re.compile(r'([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)',
+            re.compile(r'\b([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)',
                        re.IGNORECASE)
 
     @staticmethod
@@ -167,7 +174,8 @@ class TextNoisifier:
         return self._subword_substitution(word, self.phonetic_words_dict)
 
     @staticmethod
-    def _subword_substitution(word, substitution_dict):
+    def _substitution(word, substitution_dict):
+        """Find the substitute in the text and replace."""
         for k, v in substitution_dict.items():
             try:
                 is_upper = word[0].isupper()
@@ -185,16 +193,13 @@ class TextNoisifier:
         return word
 
     def phonetic_style(self, text):
+        """Phonetic style for the word."""
         result = self.phonetic_style_words(text)
         return self.phonetic_style_subwords(result)
 
-    def accent_style_subwords(self, text):
-        """Accent style part of a word."""
-        return self._subword_substitution(text, self.accent_subwords_dict)
-
-    def accent_style_words(self, text):
+    def accent_style(self, text):
         """Accent style a word."""
-        return self._subword_substitution(text, self.accent_words_dict)
+        return self._substitution(text, self.accent_words_dict)
 
     def group_repeating_units(self, word):
         """Group repeating units by grouping the syllables."""
@@ -231,12 +236,14 @@ class TextNoisifier:
                 and "'" not in word:
 
             if random.random() > 0.95:  # slim chance
-                selected = random.choice(['repeat_characters', 'misspell'])
+                selected = 'repeat_characters'
+            elif random.random() > 0.5:
+                selected = 'misspell'
             else:
                 selected = random.choice(['remove_vowels',
-                                            'phonetic_style',
-                                            'group_repeating_units',
-                                            'accent_style'])
+                                          'phonetic_style',
+                                          'group_repeating_units',
+                                          'accent_style'])
 
             word = self.dispatch_rules(selected, word)
 
@@ -248,7 +255,7 @@ class TextNoisifier:
             'remove_vowels': self.remove_vowels(word),
             'phonetic_style': self.phonetic_style(word),
             'misspell': self.misspell(word),
-            'accent_style': self.accent_style_words(word),
+            'accent_style': self.accent_style(word),
             'repeat_characters': self.repeat_characters(word),
             'group_repeating_units': self.group_repeating_units(word)
         }.get(rule, word)

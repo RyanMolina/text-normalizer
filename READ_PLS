@@ -49,3 +49,20 @@ Then train the parallel clean and noisy text using the Sequence to Sequence Recu
 
 - Rules layering
 - Remove the anuable rules, just put it in the dictionary.
+
+AYOKO -> AYAW KO is not yet working, possibly all of the accent stylization.
+
+cut the input upto character limit and cut the decoder if all that follows is incorrect,
+because that is the point where input stops.
+
+* encode hyphen to <hyphen> in simplediff to check errors.
+
+Detect first if the word is formal or informal to decrease false positive results.
+* Make the dataset tokens space seperated like the `` '' and shits
+I really need to fix the "ng" and "nang"
+allow hyphens period and slash
+Create a model to detect Named-Entity and Normal words to avoid False Positive results.
+
+
+Parameterized character limit on all files
+I need to remove all english words on the training data using Trigram language detections

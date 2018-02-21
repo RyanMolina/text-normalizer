@@ -3,9 +3,7 @@ import os
 import random
 import time
 from multiprocessing import Pool
-# from utils import tokenizer
 import nltk.tokenize as tokenizer
-from nltk.tokenize.moses import MosesDetokenizer
 from .textnoisifier import TextNoisifier
 
 
@@ -99,14 +97,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
     if size:
         dataset = dataset[:size]
 
-    detokenizer = MosesDetokenizer()
-
-    rules = ['group_repeating_units',
-             'phonetic_style',
-             'remove_vowels',
-             'accent_style',
-             None]
-
     sent_number = 0
     start_time = time.time()
 
@@ -132,6 +122,12 @@ def collect_dataset(src, tgt, max_seq_len=50,
                           (dataset_size - sent_number) / speed))
 
                 start_time = time.time()
+
+            # TODO: Allow punctuations on dataset.
+            # TODO: Create a model to detect named-entity
+            # TODO: Remove all sentence with English words
+            # TODO: Word-level seq2seq to solve ng and nang
+            # TODO: Generate edit distance for deletes using FAROO solution
 
             clean_sentence = sentence[:max_seq_len]
             clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
@@ -165,8 +161,14 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 # It is faster than checking length of the list
                 pass
 
+            # TODO: Make the tokens space seperated.
+            # TODO: Encode starting quotes and ending quotes to <sdq> and <edq>
             noisy_sentence = ' '.join(noisy_sentence)
             if char_level_emb:
+                clean_sentence = clean_sentence.replace('``', '<sdq>') \
+                                               .replace("''", '<edq>')
+                noisy_sentence = noisy_sentence.replace('``', '<sdq>') \
+                                               .replace("''", '<edq>')
                 clean_sentence = ' '.join(list(clean_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
                 noisy_sentence = ' '.join(list(noisy_sentence)) \
@@ -180,9 +182,6 @@ def collect_dataset(src, tgt, max_seq_len=50,
         encoder_file.truncate(encoder_file.tell() - 2)
 
 
-accent_subwords_dict = csv_to_dict(os.path.join(
-    'training', 'data', 'accented_subwords.dic'))
-
 accent_words_dict = csv_to_dict(
     os.path.join('training', 'data', 'accented_words.dic'))
 
@@ -195,8 +194,7 @@ phonetic_words_dict = csv_to_dict(
 with open(os.path.join('training', 'data', 'hyph_fil.tex'), 'r') as f:
     hyphenator_dict = f.read()
 
-ntg = TextNoisifier(accent_subwords_dict=accent_subwords_dict,
-                    accent_words_dict=accent_words_dict,
-                    phonetic_subwords_dict=phonetic_subwords_dict,
+ntg = TextNoisifier(accent_words_dict=accent_words_dict,
                     phonetic_words_dict=phonetic_words_dict,
+                    phonetic_subwords_dict=phonetic_subwords_dict,
                     hyphenator_dict=hyphenator_dict)

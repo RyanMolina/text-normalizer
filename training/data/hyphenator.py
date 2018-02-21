@@ -41,8 +41,6 @@ class Hyphenator:
         # points.
         t = self.tree
         for c in chars:
-        This module provides a single function to hyphenate words.  hyphenate_word takes
- 
             if c not in t:
                 t[c] = {}
             t = t[c]
