@@ -83,6 +83,8 @@ def align_tokens(a, b):
                 a[i] = ' '
 
 def check_errors(enc, dec, res):
+    res = res.replace('-', '<hyphen>')
+    dec = dec.replace('-', '<hyphen>')
     a, b = align_chars(list(res), list(dec))
     res_dec = ['-' if i == '' else i for i in a]
     dec_res = ['-' if j == '' else j for j in b]
@@ -105,10 +107,10 @@ def check_errors(enc, dec, res):
     output = []
     for i in range(len(res_dec)):
         try:
-            res_dec[i] = res_dec[i].replace('_', ' ').replace('-', '')
-            dec_res[i] = dec_res[i].replace('_', ' ').replace('-', '')
-            dec_enc[i] = dec_enc[i].replace('_', ' ').replace('-', '')
-            enc_dec[i] = enc_dec[i].replace('_', ' ').replace('-', '')
+            res_dec[i] = res_dec[i].replace('_', ' ').replace('-', '').replace('<hyphen>', '-')
+            dec_res[i] = dec_res[i].replace('_', ' ').replace('-', '').replace('<hyphen>', '-')
+            dec_enc[i] = dec_enc[i].replace('_', ' ').replace('-', '').replace('<hyphen>', '-')
+            enc_dec[i] = enc_dec[i].replace('_', ' ').replace('-', '').replace('<hyphen>', '-')
         except IndexError:
             pass
 
