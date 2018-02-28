@@ -17,12 +17,13 @@ def main():
     args = parse_args()
     model_name = args.model_name
 
-    training_path = os.path.join('training', 'data', 'dataset')
+    FILE_PATH = os.path.dirname(__file__)
+    training_path = os.path.join(FILE_PATH, 'training', 'data', 'dataset')
     os.makedirs(os.path.join(training_path, model_name), exist_ok=True)
 
     if args.corpus:
         print("> Generating dataset from the corpus file...")
-        corpus_path = os.path.join('training', 'data', 'corpus')
+        corpus_path = os.path.join(FILE_PATH, 'training', 'data', 'corpus')
         articles_path = os.path.join(corpus_path, args.corpus)
         noisify_dataset.collect_dataset(articles_path,
                                         os.path.join(training_path,
@@ -61,20 +62,21 @@ def main():
 
     if args.train:
         print("> Start trainining...")
-        data_dir = os.path.join(training_path, model_name)
-        model_dir = os.path.join('training', 'model', model_name)
+        print(FILE_PATH)
+        data_dir = os.path.join(FILE_PATH, training_path, model_name)
+        model_dir = os.path.join(FILE_PATH, 'training', 'model', model_name)
         os.makedirs(model_dir, exist_ok=True)
-        hparams_file = os.path.join('hparams.json')
+        hparams_file = os.path.join(FILE_PATH, 'hparams.json')
         noisify_dataset_file = os.path.abspath(noisify_dataset.__file__)
 
         if not os.path.exists(os.path.join(model_dir, hparams_file)):
             print("> Backing up hparams.json")
             shutil.copy(hparams_file, os.path.join(model_dir))
 
-        if not os.path.exists(os.path.join(model_dir, 'noisify_dataset.py')):
+        if not os.path.exists(os.path.join(data_dir, 'noisify_dataset.py')):
             print("> Backing up noisify_dataset.py")
             shutil.copy(noisify_dataset_file,
-                        os.path.join(model_dir, 'noisify_dataset.py.bak'))
+                        os.path.join(data_dir, 'noisify_dataset.py.bak'))
 
         hparams = utils.load_hparams(
             os.path.join(model_dir, hparams_file))
