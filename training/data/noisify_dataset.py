@@ -4,6 +4,7 @@ import random
 import time
 from multiprocessing import Pool
 import nltk.tokenize as tokenizer
+from nltk.util import ngrams
 from .textnoisifier import TextNoisifier
 
 
@@ -18,88 +19,72 @@ def csv_to_dict(file):
     return d
 
 
-def noisify(text):
+def noisify(word):
     """Given a text, return noisy text.
 
     This function also wraps the instance method to be passed on Pool map.
     Since, multiprocessing.Pool.map() only accept single argument function.
     This function hides the 'self' in ntg.noisify().
     """
-    return ntg.noisify(text)
+    return ntg.noisify(word)
 
 
-def ngram(text):
-    """Given a text, return the ngrams(3, 7)."""
-    def find_ngrams(input_list, n):
-        return zip(*[input_list[i:] for i in range(n)])
-
-    ngrams = [grams
-              for i in range(3, 7)
-              for grams in find_ngrams(tokenizer.word_tokenize(text), i)]
-    return ngrams
+def misspell(word):
+    if not word[0].isupper() \
+            and ntg.re_accepted.search(word) \
+            and len(word) > 1:
+        word = ntg.misspell(word)
+    return word
 
 
-def accents_subword(text):
-    """Wrap function for multiprocessing.Pool()."""
-    if ntg.re_accepted.search(text):
-        return ntg.accent_style_subwords(text)
-    else:
-        return text
-
-
-def accents_word(text):
-    """Wrap function for multiprocessing.Pool()."""
-    if ntg.re_accepted.search(text):
-        return ntg.accent_style_words(text)
-    else:
-        return text
+def trigram(text):
+    return list(ngrams(text.split(), 3))
 
 
 def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
-                    shuffle=False, size=10000000):
+                    shuffle=False, size=1000000):
     """Generate a parallel clean and noisy text from a given clean text."""
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
         contents = infile.read()
-        sentences = [content.strip()
+        dataset = [content.strip()
                      for content in contents.splitlines()
                      if content]
-
+    print('# Initialize multiprocess.Pool()')
     process_pool = Pool()
-    dataset = []
-    if shuffle:
-        random.shuffle(sentences)
 
-    dataset.extend(sentences[:size])
-    dataset_size = len(dataset)
-    print('  [+] Flattened data length: {}'.format(dataset_size))
+    if shuffle:
+        print('# 1st shuffle of dataset')
+        random.shuffle(dataset)
 
     if augment_data:
-        print('  [+] N-grams to augment the data.')
-        ngrams = process_pool.map(ngram, dataset[:50000])
-        print('    [-] Flattening n-grams...')
-        dataset_ngrams = [' '.join(list(gram))
-                          for grams in ngrams
-                          for gram in grams
-                          if gram]
-        print('    [-] Shuffling n-grams')
-        random.shuffle(dataset_ngrams)
-        dataset.extend(dataset_ngrams[:size*5])
+        print('  [+] Augment dataset using trigram of dataset.')
+        print('      Get the trigrams of 10% of the dataset.')
+        trigrams = process_pool.map(trigram, dataset[:int(len(dataset)*0.10)])
+        print('    [-] Flattening trigrams...')
+        dataset_trigrams = [' '.join(list(gram))
+                            for grams in trigrams
+                            for gram in grams
+                            if gram]
+        print('    [-] Shuffling trigrams')
+        random.shuffle(dataset_trigrams)
+        dataset.extend(dataset_trigrams[:size*5])
         print('    [-] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
 
     if shuffle:
-        print('  [+] Randomizing the position of the dataset')
+        print('# 2nd shuffle of dataset')
         random.shuffle(dataset)
 
     if size:
+        print('# Truncate dataset to desired dataset size.')
         dataset = dataset[:size]
 
+    dataset_size = len(dataset)
     sent_number = 0
     start_time = time.time()
-
     print('   => Dataset Size: {}'.format(len(dataset)))
     print('   => collecting clean and noisy sentences')
 
@@ -120,14 +105,32 @@ def collect_dataset(src, tgt, max_seq_len=50,
                           sent_number,
                           speed,
                           (dataset_size - sent_number) / speed))
-
                 start_time = time.time()
+            # TODO (done): Allow punctuations on dataset (hyphen and apostrophe only).
 
-            # TODO: Allow punctuations on dataset.
-            # TODO: Create a model to detect named-entity
-            # TODO: Remove all sentence with English words
-            # TODO: Word-level seq2seq to solve ng and nang
-            # TODO: Generate edit distance for deletes using FAROO solution
+            # TODO (working in tagalog_m): Create a model to detect named-entity
+            #       (but most likely named-entity occur less on dataset so the model will just copy it)
+
+            # TODO (unecessary): Remove all sentence with English words (Too much work with less improvement)
+
+            # TODO (done): add of hyphen, when affix ends with consonant and the root word starts in vowel
+            #       (Fix later if the hyphens affect the overall accuracy)
+
+            # TODO: Word-level seq2seq to solve ng and nang (*Priority* this is a common mistake)
+
+            # TODO (done): Generate edit distance for deletes using Peter Norvig's solution (*Priority* misspelled words)
+
+            # TODO: Classifier for real words
+            
+            # TODO: Classifier for named-entity
+
+            # Graph for
+            # Errors per word top 100 - Veritcal bar chart
+            # Correct per word top 100 - Vertical bar chart
+            # Perplexity - Line chart
+            # Applied noisification in dataset - Radar chart and Pie chart
+            # Accuracy/Error per model - Vertical bar chart
+            # noisification category in informal words - pie chart
 
             clean_sentence = sentence[:max_seq_len]
             clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
@@ -150,48 +153,53 @@ def collect_dataset(src, tgt, max_seq_len=50,
             noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
                                              noisy_sentence)
 
-            noisy_sentence = tokenizer.word_tokenize(noisy_sentence)
+            noisy_sentence = noisy_sentence.split()
 
             try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
                 noisy_sentence = process_pool.map(
                     noisify, noisy_sentence[1:])
                 noisy_sentence.insert(0, sos)
+                if random.getrandbits(1):
+                    sos = ntg.noisify(noisy_sentence[0], sos=True)
+                    noisy_sentence = process_pool.map(
+                        noisify, noisy_sentence[1:])
+                    noisy_sentence.insert(0, sos)
             except IndexError:
                 # It is faster than checking length of the list
                 pass
 
-            # TODO: Make the tokens space seperated.
-            # TODO: Encode starting quotes and ending quotes to <sdq> and <edq>
             noisy_sentence = ' '.join(noisy_sentence)
             if char_level_emb:
-                clean_sentence = clean_sentence.replace('``', '<sdq>') \
-                                               .replace("''", '<edq>')
-                noisy_sentence = noisy_sentence.replace('``', '<sdq>') \
-                                               .replace("''", '<edq>')
                 clean_sentence = ' '.join(list(clean_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
                 noisy_sentence = ' '.join(list(noisy_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
 
-            if clean_sentence and noisy_sentence:
+                clean_sentence = clean_sentence.replace('` `', '<lquotes>') \
+                                       .replace("' '", '<rquotes>')
+                noisy_sentence = noisy_sentence.replace('` `', '<lquotes>') \
+                                        .replace("' '", '<rquotes>')
+
+            if len(clean_sentence) > 1 and len(noisy_sentence) > 1:
                 decoder_file.write(clean_sentence + "\n")
                 encoder_file.write(noisy_sentence + "\n")
 
         decoder_file.truncate(decoder_file.tell() - 2)
         encoder_file.truncate(encoder_file.tell() - 2)
 
+FILE_PATH = os.path.dirname(__file__)
 
 accent_words_dict = csv_to_dict(
-    os.path.join('training', 'data', 'accented_words.dic'))
+    os.path.join(FILE_PATH, 'accented_words.dic'))
 
 phonetic_subwords_dict = csv_to_dict(
-    os.path.join('training', 'data', 'phonetically_styled_subwords.dic'))
+    os.path.join(FILE_PATH, 'phonetically_styled_subwords.dic'))
 
 phonetic_words_dict = csv_to_dict(
-    os.path.join('training', 'data', 'phonetically_styled_words.dic'))
+    os.path.join(FILE_PATH, 'phonetically_styled_words.dic'))
 
-with open(os.path.join('training', 'data', 'hyph_fil.tex'), 'r') as f:
+with open(os.path.join(FILE_PATH, 'hyph_fil.tex'), 'r') as f:
     hyphenator_dict = f.read()
 
 ntg = TextNoisifier(accent_words_dict=accent_words_dict,

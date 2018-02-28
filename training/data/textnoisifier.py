@@ -1,7 +1,6 @@
 """This module handles all noisy text generation."""
 import re
 import random
-import string
 from pprint import pprint
 # from utils.tokenizer import mwe_tokenize
 import nltk.tokenize as tokenizer
@@ -11,8 +10,11 @@ from .hyphenator import Hyphenator
 class TextNoisifier:
     """Handles all text noisification rules."""
 
-    def __init__(self, accent_words_dict,
-                 phonetic_subwords_dict, phonetic_words_dict, hyphenator_dict):
+    def __init__(self,
+                 accent_words_dict,
+                 phonetic_subwords_dict,
+                 phonetic_words_dict,
+                 hyphenator_dict):
         """Initialize all dictionaries and Regex for string manipulation."""
         self.accent_words_dict = accent_words_dict
 
@@ -27,6 +29,7 @@ class TextNoisifier:
         self.vowels += self.vowels.upper()
         self.consonants = "bcdfghjklmnpqrstvwxyz"
         self.consonants += self.consonants.upper()
+        self.alphabet = self.vowels + self.consonants
 
         matches = re.findall(r"\{(.*?)\}",
                              hyphenator_dict,
@@ -43,6 +46,7 @@ class TextNoisifier:
                 self.mwes.append(tuple(words))
                 words[0] = words[0].capitalize()
                 self.mwes.append(tuple(words))
+
         print("============= Multi-word Expressions =================")
         pprint(self.mwes)
 
@@ -69,6 +73,18 @@ class TextNoisifier:
              re.IGNORECASE), r'\1\3')
         ]
 
+
+        """
+        >>> nang
+        Replacement for 'noong'.
+        Sagot sa paano o gaano.
+        Pang-angkop sa pandiwang inuulit (Tulog ka nang tulog)
+        Kung pinagsamang 'na' at 'ang', 'na' at 'ng', o ng 'na' at 'na'
+
+        >>> ng
+        Pantukoy ng pangalan
+        Pagpapahiwatig ng pagmamay-ari
+        """
         # TODO: Implement this randomly and see the result if it works.
         self.ng_nang = [
             (re.compile(r'\bng\b'), r'nang'),
@@ -137,8 +153,8 @@ class TextNoisifier:
 
     def repeat_characters(self, word):
         """Repeat characters from left or right portion of the word."""
-        letter = random.choice(list(word))
-        length = random.randrange(4, 10)
+        letter = random.choice(self.alphabet)
+        length = random.randrange(2, 10)
         if random.getrandbits(1):
             word = word.replace(letter, letter * length, 1)
         else:
@@ -147,31 +163,65 @@ class TextNoisifier:
 
     def misspell(self, word):
         """Replace/Delete/Insert a character in a word to misspell."""
-        selected = random.choice(['replace', 'delete', 'insert'])
-        letter = random.choice(list(word))
-        if selected == 'replace':
-            replacement = random.choice(string.ascii_lowercase)
-            if random.getrandbits(1):
-                word = word.replace(letter, replacement, 1)
-            else:
-                word = word[::-1].replace(letter, replacement, 1)[::-1]
+        if random.getrandbits(1):
+            word = self._one_char_edit(word)
         else:
-            positions = [i for i, e in enumerate(list(word)) if e == letter]
-            idx = random.choice(positions)
-            if selected == 'delete':
-                word = word[:idx] + word[idx + 1:]
-            else:
-                insert = random.choice(string.ascii_lowercase)
-                word = word[:idx] + insert + word[idx:]
+            word = self._two_char_edit(word)
         return word
+
+    def _one_char_edits(self, word):
+        """Based on Peter Norvig's Spell Corrector."""
+        splits = [(word[:i], word[i:])
+                  for i in range(len(word) + 1)]
+
+        deletes = [l + r[1:]
+                   for l, r in splits
+                   if r]
+
+        transposes = [l + r[1] + r[0] + r[2:]
+                      for l, r in splits
+                      if len(r) > 1]
+
+        replaces = [l + c + r[1:]
+                    for l, r in splits
+                    for c in self.alphabet]
+                        
+        inserts = [l + c + r
+                   for l, r in splits
+                   for c in self.alphabet]
+        return list(set(deletes + transposes + replaces + inserts))
+
+    def _one_char_edit(self, word):
+        edit = random.choice(['del', 'ins', 'rep', 'tra'])
+        idx = random.randrange(len(word) + 1)
+        letter = random.choice(self.alphabet) 
+
+        lsplit, rsplit = word[:idx], word[idx:]
+        if edit == 'del' and rsplit:
+            word = lsplit + rsplit[1:] 
+        elif edit == 'tra' and len(rsplit) > 1:
+            word = lsplit + rsplit[1] + rsplit[0] + rsplit[2:]
+        elif edit == 'rep':
+            word = lsplit + letter + rsplit[1:]
+        elif edit == 'ins':
+            word = lsplit + letter + rsplit
+        return word
+
+    def _two_char_edit(self, word):
+        return self._one_char_edit(self._one_char_edit(word))
+
+    def _two_char_edits(self, word):
+        return [e2
+                for e1 in self._one_char_edits(word)
+                for e2 in self._one_char_edits(e1)]
 
     def phonetic_style_subwords(self, word):
         """Return a phonetically styled portion of a word."""
-        return self._subword_substitution(word, self.phonetic_subwords_dict)
+        return self._substitution(word, self.phonetic_subwords_dict)
 
     def phonetic_style_words(self, word):
         """Return a phonetically styled word."""
-        return self._subword_substitution(word, self.phonetic_words_dict)
+        return self._substitution(word, self.phonetic_words_dict)
 
     @staticmethod
     def _substitution(word, substitution_dict):
@@ -229,15 +279,21 @@ class TextNoisifier:
         return ''.join(units)
 
     def noisify(self, word, sos=False):
-        """Randomly apply string manipulation."""
+        """Randomly apply string manipulation.
+
+        It only accepts alphabet, apostrophe and hyphen. 
+        The string length must be greater than 1.
+        It doesn't accept capital letters, hacky way to avoid named-entity to be noisified.
+
+        """
         if self.re_accepted.search(word) \
                 and len(word) > 1 \
-                and (sos or word[0].islower()) \
-                and "'" not in word:
-
-            if random.random() > 0.95:  # slim chance
+                and (sos or word[0].islower()):
+            
+            value = random.random()
+            if value > 0.90:  # slim chance
                 selected = 'repeat_characters'
-            elif random.random() > 0.5:
+            elif value > 0.3:
                 selected = 'misspell'
             else:
                 selected = random.choice(['remove_vowels',
@@ -246,7 +302,7 @@ class TextNoisifier:
                                           'accent_style'])
 
             word = self.dispatch_rules(selected, word)
-
+            word = word.replace('-', '')
         return word
 
     def dispatch_rules(self, rule, word):
