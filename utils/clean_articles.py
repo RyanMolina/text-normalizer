@@ -1,5 +1,6 @@
 import re
 import argparse
+from nltk.tokenize import word_tokenize, sent_tokenize
 
 spaces = re.compile(r'\s+') # Multiple spaces
 ascii_only = re.compile(r'[^\x00-\x7f]') # Removing the non-ascii characters
@@ -8,8 +9,7 @@ news_location = re.compile(r'^(\w+\s\w+|\w+),\s\w+\s-\s') # MANILA, Philippines 
 common_informal_words = {'meron': 'mayroon',
                          'penge': 'pahingi',
                          'kundi': 'kung hindi',
-                         'tsaka': 'saka',
-                         }
+                         'tsaka': 'saka'}
 
 def main():
     with open(args.src, 'r') as in_file, \
@@ -21,7 +21,11 @@ def main():
             article = news_location.sub('', article)
             article = article.replace('\r', '').replace('\n', '')
             if article:
-                print(article.strip(), file=out_file)
+                sentence = article
+                # for sentence in sent_tokenize(article): 
+                tokens = word_tokenize(sentence)
+                sentence = ' '.join(tokens)
+                print(sentence.strip(), file=out_file)
 
 
 if __name__ == "__main__":
