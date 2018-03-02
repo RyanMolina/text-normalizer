@@ -2,6 +2,7 @@ from collections import namedtuple
 
 TestStatistics = namedtuple('TestStatistics', ['fp', 'tn', 'tp', 'fn'])
 
+
 def lcs(a, b):
     if not a or not b:
         return []
@@ -21,7 +22,7 @@ def lcs(a, b):
                 cur = []
         if len(cur) > len(longest):
             longest = cur
- 
+
         if sa[len(sa) - 1] == '':
             # Shift 'a' to the right.
             sa = [''] + sa[: len(sa) - 1]
@@ -31,7 +32,7 @@ def lcs(a, b):
     return longest
 
 
-def find_sub_list(l=[], sub=[]):
+def find_sub_list(l, sub):
     if len(sub) > len(l):
         return -1
     for i in range(len(l) - len(sub) + 1):
@@ -45,44 +46,48 @@ def find_sub_list(l=[], sub=[]):
         if eq:
             return i
     return -1
- 
+
+
 def align_chars(sequence1, sequence2):
     # lcs is the Longest Common Subsequence function.
     cs = lcs(sequence1, sequence2)
- 
-    if cs == []:
-        return sequence1 + [''] * len(sequence2) , \
+
+    if not cs:
+        return sequence1 + [''] * len(sequence2), \
                [''] * len(sequence1) + sequence2
     else:
         # Remainings non-aligned sequences in the left side.
         left1 = sequence1[:find_sub_list(sequence1, cs)]
         left2 = sequence2[:find_sub_list(sequence2, cs)]
- 
+
         # Remainings non-aligned sequences in the right side.
         right1 = sequence1[find_sub_list(sequence1, cs) + len(cs):]
         right2 = sequence2[find_sub_list(sequence2, cs) + len(cs):]
- 
+
         # Align the sequences in the left and right sides:
         left_align = align_chars(left1, left2)
         right_align = align_chars(right1, right2)
- 
+
         return left_align[0] + cs + right_align[0], \
                left_align[1] + cs + right_align[1]
-               
+
+
 def align_tokens(a, b):
     for i in range(len(a)):
         if b[i] == '-' and a[i] == ' ':
-            if '-' == b[i-1]:
+            if '-' == b[i - 1]:
                 a[i] = '_'
             else:
                 b[i] = ' '
         elif b[i] == ' ' and a[i] == '-':
-            if '-' == a[i-1]:
+            if '-' == a[i - 1]:
                 b[i] = '_'
             else:
                 a[i] = ' '
 
+
 def check_errors(enc, dec, res):
+    enc = enc.replace('-', '<hyphen>')
     res = res.replace('-', '<hyphen>')
     dec = dec.replace('-', '<hyphen>')
     a, b = align_chars(list(res), list(dec))

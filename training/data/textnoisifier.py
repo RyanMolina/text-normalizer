@@ -2,7 +2,6 @@
 import re
 import random
 from pprint import pprint
-# from utils.tokenizer import mwe_tokenize
 import nltk.tokenize as tokenizer
 from .hyphenator import Hyphenator
 
@@ -31,7 +30,7 @@ class TextNoisifier:
         self.consonants += self.consonants.upper()
         self.alphabet = self.vowels + self.consonants
 
-        matches = re.findall(r"\{(.*?)\}",
+        matches = re.findall(r"{(.*?)\}",
                              hyphenator_dict,
                              re.MULTILINE | re.DOTALL)
 
@@ -51,6 +50,7 @@ class TextNoisifier:
         pprint(self.mwes)
 
         self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes)
+        
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
 
@@ -73,6 +73,7 @@ class TextNoisifier:
              re.IGNORECASE), r'\1\3')
         ]
 
+        self.common_prefix = ['mag', 'ika', 'maki', 'paki', 'pag', 'kasing', 'labing']
 
         """
         >>> nang
@@ -92,7 +93,7 @@ class TextNoisifier:
         ]
 
         self.raw_daw = \
-            re.compile(r'\b([^aeiou]|[aeiou])\b\s(d|r)(aw|ito|oon|in)',
+            re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
                        re.IGNORECASE)
 
     @staticmethod
@@ -102,12 +103,6 @@ class TextNoisifier:
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
 
-    def normalize_raw_daw(self, match):
-        """Normalize text that misuse raw and daw."""
-        if match.group(1) in self.vowels:
-            return self._format(match, 'r')  # raw
-        elif match.group(1) in self.consonants:
-            return self._format(match, 'd')  # daw
 
     def noisify_raw_daw(self, match):
         """Misuse raw and daw in sentence."""
@@ -115,6 +110,33 @@ class TextNoisifier:
             return self._format(match, 'd')  # raw
         elif match.group(1) in self.consonants:
             return self._format(match, 'r')  # daw
+
+    def normalize_hyphen(self, word):
+        # starts with freq prefixes
+        # get root word
+        # check root word if starts with vowel then ADD hyphen
+        # between prefix and root word
+
+        # second case separate identical parts of a word
+        # dahan-dahan, turo-turo, luko-luko-, taba-taba
+        def find_prefix(w):
+            for prefix in self.common_prefix:
+                if w.startswith(prefix):
+                    return prefix
+
+        prefix = find_prefix(word)
+
+        pass
+
+    def noisify_hyphen(self, word):
+        # starts with freq prefixes
+        # get root word
+        # check root word if starts with vowel then REMOVE hyphen
+        # between prefix and root word
+
+        # second case separate identical parts of a word
+        # dahan-dahan, turo-turo, luko-luko-, taba-taba
+        pass
 
     def remove_vowels(self, word):
         """Remove vowels randomly from a word."""
@@ -302,7 +324,6 @@ class TextNoisifier:
                                           'accent_style'])
 
             word = self.dispatch_rules(selected, word)
-            word = word.replace('-', '')
         return word
 
     def dispatch_rules(self, rule, word):

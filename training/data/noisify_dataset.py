@@ -29,21 +29,19 @@ def noisify(word):
     return ntg.noisify(word)
 
 
-def misspell(word):
-    if not word[0].isupper() \
-            and ntg.re_accepted.search(word) \
-            and len(word) > 1:
-        word = ntg.misspell(word)
-    return word
+def accent_style(word):
+    return ntg.accent_style(word)
 
 
 def trigram(text):
-    return list(ngrams(text.split(), 3))
+    tokens = text.split()
+    if tokens >= 3:
+        return list(ngrams(tokens, 3))
 
 
 def collect_dataset(src, tgt, max_seq_len=50,
                     char_level_emb=False, augment_data=False,
-                    shuffle=False, size=1000000):
+                    shuffle=False, size=None):
     """Generate a parallel clean and noisy text from a given clean text."""
     print('# Reading file')
     with open(src, encoding='utf8') as infile:
@@ -69,7 +67,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
                             if gram]
         print('    [-] Shuffling trigrams')
         random.shuffle(dataset_trigrams)
-        dataset.extend(dataset_trigrams[:size*5])
+        dataset.extend(dataset_trigrams)
         print('    [-] Add ngrams to dataset')
         dataset_size = len(dataset)
         print('  [+] New dataset size: {}'.format(dataset_size))
@@ -108,23 +106,21 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 start_time = time.time()
             # TODO (done): Allow punctuations on dataset (hyphen and apostrophe only).
 
-            # TODO (working in tagalog_m): Create a model to detect named-entity
-            #       (but most likely named-entity occur less on dataset so the model will just copy it)
+            """ TODO: Create a model to detect named-entity
+                   (but most likely named-entity occur less on dataset so the model will just copy it) """
 
-            # TODO (unecessary): Remove all sentence with English words (Too much work with less improvement)
-
-            # TODO (done): add of hyphen, when affix ends with consonant and the root word starts in vowel
-            #       (Fix later if the hyphens affect the overall accuracy)
+            """ TODO: add of hyphen, when affix ends with consonant and the root word starts in vowel
+                             (Fix later if the hyphens affect the overall accuracy) """
+            # TODO: Concat seperator affix to its rootword
 
             # TODO: Word-level seq2seq to solve ng and nang (*Priority* this is a common mistake)
 
-            # TODO (done): Generate edit distance for deletes using Peter Norvig's solution (*Priority* misspelled words)
+            # TODO (done): Generate edit distance for deletes using Peter Norvig's solution
 
             # TODO: Classifier for real words
             
             # TODO: Classifier for named-entity
 
-            # Graph for
             # Errors per word top 100 - Veritcal bar chart
             # Correct per word top 100 - Vertical bar chart
             # Perplexity - Line chart
@@ -152,6 +148,10 @@ def collect_dataset(src, tgt, max_seq_len=50,
             #  Noisify r|d(oon, in, aw, ito)
             noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
                                              noisy_sentence)
+
+            # Accent Style
+            noisy_sentence = process_pool.map(accent_style,
+                                              ntg.mwe_tokenizer(noisy_sentence.split()))
 
             noisy_sentence = noisy_sentence.split()
 
