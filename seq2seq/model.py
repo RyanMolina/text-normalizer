@@ -252,21 +252,34 @@ class ModelBuilder(object):
 
             # Inference
             else:
-                # length_penalty_weight = hparams.length_penalty_weight
+                beam_width = self.hparams.beam_width
+                length_penalty_weight = self.hparams.length_penalty_weight
                 start_tokens = tf.fill([self.batch_size], tgt_sos_id)
                 end_token = tgt_eos_id
 
-                # Helper
-                helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-                    self.embedding_decoder, start_tokens, end_token)
+                if beam_width > 0:
+                    my_decoder = tf.contrib.seq2seq.BeamSearchDecoder(
+                        cell=cell,
+                        embedding=self.embedding_decoder,
+                        start_tokens=start_tokens,
+                        end_token=end_token,
+                        initial_state=decoder_initial_state,
+                        beam_width=beam_width,
+                        output_layer=self.output_layer,
+                        length_penalty_weight=length_penalty_weight,
+                    )
+                else:
+                    # Helper
+                    helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+                        self.embedding_decoder, start_tokens, end_token)
 
-                # Decoder
-                my_decoder = tf.contrib.seq2seq.BasicDecoder(
-                    cell,
-                    helper,
-                    decoder_initial_state,
-                    output_layer=self.output_layer  # applied per timestep
-                )
+                    # Decoder
+                    my_decoder = tf.contrib.seq2seq.BasicDecoder(
+                        cell,
+                        helper,
+                        decoder_initial_state,
+                        output_layer=self.output_layer  # applied per timestep
+                    )
 
                 # Dynamic decoding
                 outputs, final_context_state, _ = \
@@ -277,8 +290,12 @@ class ModelBuilder(object):
                         swap_memory=True,
                         scope=decoder_scope)
 
-                logits = outputs.rnn_output
-                sample_id = outputs.sample_id
+                if beam_width > 0:
+                    logits = tf.no_op()
+                    sample_id = outputs.predicted_ids
+                else:
+                    logits = outputs.rnn_output
+                    sample_id = outputs.sample_id
 
         return logits, sample_id, final_context_state
 
@@ -290,6 +307,7 @@ class ModelBuilder(object):
 
         num_units = self.hparams.num_units
         num_layers = self.hparams.num_layers
+        beam_width = self.hparams.beam_width
 
         dtype = tf.float32
 
@@ -299,7 +317,18 @@ class ModelBuilder(object):
         else:
             memory = encoder_outputs
 
-        batch_size = self.batch_size
+
+        if not self.training and beam_width > 0:
+            memory = tf.contrib.seq2seq.tile_batch(memory, multiplier=beam_width)
+            source_sequence_length = tf.contrib.seq2seq.tile_batch(source_sequence_length,
+                                                                   multiplier=beam_width)
+
+            encoder_state = tf.contrib.seq2seq.tile_batch(encoder_state,
+                                                          multiplier=beam_width)
+
+            batch_size = self.batch_size * beam_width
+        else:
+            batch_size = self.batch_size
 
         # Create the attention mechanism
         if self.hparams.attention_option == "luong":
@@ -336,7 +365,7 @@ class ModelBuilder(object):
             num_residual_layers=self.hparams.num_residual_layers)
 
         # Only generate alignment in greedy INFER mode.
-        alignment_history = (not self.training)
+        alignment_history = (not self.training and beam_width == 0)
         cell = tf.contrib.seq2seq.AttentionWrapper(
             cell,
             attention_mechanism,
@@ -390,6 +419,8 @@ class ModelBuilder(object):
         return sample_words, infer_summary
 
     def _get_infer_summary(self):
+        if self.hparams.beam_width > 0:
+            return tf.no_op()
         return self.final_context_state.alignment_history.stack()
 
 

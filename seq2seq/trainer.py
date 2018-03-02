@@ -245,6 +245,9 @@ class Trainer(object):
             """
             if tgt_eos:
                 tgt_eos = tgt_eos.encode("utf-8")
+
+            if hparams.beam_width > 0:
+                outputs = outputs[0]
             # Select a sentence
             output = outputs.tolist()[0]
             # If there is an eos symbol in outputs, cut them at that point.
