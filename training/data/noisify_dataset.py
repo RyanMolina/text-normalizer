@@ -6,17 +6,7 @@ from multiprocessing import Pool
 import nltk.tokenize as tokenizer
 from nltk.util import ngrams
 from .textnoisifier import TextNoisifier
-
-
-def csv_to_dict(file):
-    """Convert csv to python dictionary."""
-    d = {}
-    with open(file, 'r') as f:
-        rows = f.read().splitlines()
-        for row in rows:
-            k, v = row.split(',')
-            d.setdefault(k, []).append(v)
-    return d
+from utils.helper import csv_to_dict
 
 
 def noisify(word):
@@ -146,7 +136,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 ntg.contract_repl, noisy_sentence)
 
             #  Noisify r|d(oon, in, aw, ito)
-            noisy_sentence = ntg.raw_daw.sub(ntg.noisify_raw_daw,
+            noisy_sentence = ntg.raw_daw.sub(ntg.raw_daw,
                                              noisy_sentence)
 
             # Accent Style

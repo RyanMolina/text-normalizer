@@ -1,27 +1,19 @@
+import os
 import re
 import argparse
 from nltk.tokenize import word_tokenize, sent_tokenize
+from .textnormalizer import TextNormalizer
 
 spaces = re.compile(r'\s+') # Multiple spaces
 ascii_only = re.compile(r'[^\x00-\x7f]') # Removing the non-ascii characters
 news_location = re.compile(r'^(\w+\s\w+|\w+),\s\w+\s-\s') # MANILA, Philippines - <Article>
 
-common_informal_words = {'meron': 'mayroon',
-                         'penge': 'pahingi',
-                         'kundi': 'kung hindi',
-                         'tsaka': 'saka'}
-
-vowels = 'aeiou'
-vowels += vowels.upper()
-consonants = "bcdfghjklmnpqrstvwxyz"
-consonants += consonants.upper()
-alphabet = vowels + consonants
-
-raw_daw = \
-    re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
-                re.IGNORECASE)
+dict_path = os.path.join('..', 'training', 'data', 'corpus', 'vocab.txt')
+accent_path = os.path.join('..', 'training', 'data', 'accented_words.dic')
+hyph_path = os.path.join('..', 'training', 'data', 'hyph_fil.tex')
 
 def main():
+    text_normalizer = TextNormalizer(accent_words_dict=)
     with open(args.src, 'r') as in_file, \
          open(args.out, 'w') as out_file:
         articles = in_file.read()
@@ -37,18 +29,6 @@ def main():
                 sentence = ' '.join(tokens)
                 print(sentence.strip(), file=out_file)
 
-def _format(match, repl):
-    return "{} {}{}".format(
-        match.group(1),
-        repl if match.group(2).islower() else repl.upper(),
-        match.group(3))
-
-def normalize_raw_daw(match):
-    """Normalize text that misuse raw and daw before noisification."""
-    if match.group(1) in vowels:
-        return _format(match, 'r')  # raw
-    elif match.group(1) in consonants:
-        return _format(match, 'd')  # daw
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

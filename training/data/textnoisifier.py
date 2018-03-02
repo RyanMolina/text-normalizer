@@ -104,7 +104,7 @@ class TextNoisifier:
             match.group(3))
 
 
-    def noisify_raw_daw(self, match):
+    def raw_daw(self, match):
         """Misuse raw and daw in sentence."""
         if match.group(1) in self.vowels:
             return self._format(match, 'd')  # raw
@@ -191,28 +191,6 @@ class TextNoisifier:
             word = self._two_char_edit(word)
         return word
 
-    def _one_char_edits(self, word):
-        """Based on Peter Norvig's Spell Corrector."""
-        splits = [(word[:i], word[i:])
-                  for i in range(len(word) + 1)]
-
-        deletes = [l + r[1:]
-                   for l, r in splits
-                   if r]
-
-        transposes = [l + r[1] + r[0] + r[2:]
-                      for l, r in splits
-                      if len(r) > 1]
-
-        replaces = [l + c + r[1:]
-                    for l, r in splits
-                    for c in self.alphabet]
-                        
-        inserts = [l + c + r
-                   for l, r in splits
-                   for c in self.alphabet]
-        return list(set(deletes + transposes + replaces + inserts))
-
     def _one_char_edit(self, word):
         edit = random.choice(['del', 'ins', 'rep', 'tra'])
         idx = random.randrange(len(word) + 1)
@@ -231,11 +209,6 @@ class TextNoisifier:
 
     def _two_char_edit(self, word):
         return self._one_char_edit(self._one_char_edit(word))
-
-    def _two_char_edits(self, word):
-        return [e2
-                for e1 in self._one_char_edits(word)
-                for e2 in self._one_char_edits(e1)]
 
     def phonetic_style_subwords(self, word):
         """Return a phonetically styled portion of a word."""
