@@ -19,27 +19,7 @@ class Serve:
             os.path.join(model_dir, 'hparams.json'))
 
         self.detokenizer = MosesDetokenizer()
-        self.common_informal_words = {'meron': 'mayroon',
-                                      'penge': 'pahingi',
-                                      'kundi': 'kung hindi',
-                                      'ayoko': 'ayaw ko',
-                                      'pede': 'puwede',
-                                      'ambilis': 'ang bilis',
-                                      'anuba': 'ano ba',
-                                      'answerte': 'ang suwerte',
-                                      'konting': 'kaunting',
-                                      'Meron': 'Mayroon',
-                                      'Penge': 'Pahingi',
-                                      'Kundi': 'Kung hindi',
-                                      'Ayoko': 'Ayaw ko',
-                                      'Pede': 'Puwede',
-                                      'Ambilis': 'Ang bilis',
-                                      'Anuba': 'Ano ba',
-                                      'Answerte': 'Ang suwerte',
-                                      'Konting': 'Kaunting',
-                                      'Peram': 'Pahiram',
-                                      'peram': 'pahiram'}
-
+        
         self.char_emb = char_emb
         self.normalizer = predictor.Predictor(sess,
                                               dataset_dir=data_dir,

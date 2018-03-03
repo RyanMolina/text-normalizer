@@ -22,10 +22,13 @@ def accent_style(word):
     return ntg.accent_style(word)
 
 
+def phonetic_style(word):
+    return ntg.phonetic_style(word)
+
+
 def run(src, tgt, max_seq_len=50,
         char_level_emb=False,
         augment_data=False, shuffle=False, size=None):
-
     process_pool = Pool()
     dataset = manipulate(src,
                          shuffle=shuffle,
@@ -102,7 +105,6 @@ def run(src, tgt, max_seq_len=50,
             noisy_sentence = process_pool.map(accent_style,
                                               ntg.mwe_tokenizer.tokenize(
                                                   noisy_sentence.split()))
-
             try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
                 noisy_sentence = process_pool.map(

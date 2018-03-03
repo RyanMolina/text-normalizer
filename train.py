@@ -117,6 +117,10 @@ def parse_args():
                         type="bool", nargs="?", const=False,
                         default=False,
                         help="Start/Resume train")
+    
+    parser.add_argument('--noisify_mode',
+                        default='random', type=str,
+                        help="Noisification mode [random, misspell, remove_vowels, etc]")
 
     parser.add_argument('--char_emb',
                         type="bool", nargs="?", const=False,
