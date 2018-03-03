@@ -69,23 +69,16 @@ class TextNormalizer:
     def accent_style(self, text):
         return self._substitution(text, self.accent_words_dict)
 
-    # def ng_nang(self, text):
+    def ng2nang(self, text):
+        pass
 
-    def normalize_hyphen(self, word):
-        # starts with freq prefixes
-        # get root word
-        # check root word if starts with vowel then ADD hyphen
-        # between prefix and root word
+    def nang2ng(self, text):
+        pass
 
-        # second case separate identical parts of a word
-        # dahan-dahan, turo-turo, luko-luko-, taba-taba
-        def find_prefix(w):
-            for prefix in self.common_prefix:
-                if w.startswith(prefix):
-                    return prefix
-
-        prefix = find_prefix(word)
-
+    def hyphen_repeating_units(self, units):
+        pass
+    
+    def hypen_vowel_rootword(self, word):
         pass
 
     @staticmethod

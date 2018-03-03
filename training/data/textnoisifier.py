@@ -92,7 +92,6 @@ class TextNoisifier:
         Pantukoy ng pangalan
         Pagpapahiwatig ng pagmamay-ari
         """
-        # TODO: Implement this randomly and see the result if it works.
         self.ng2nang_pattern = re.compile(r'\bng\b')
         self.ng2nang_repl = r'nang'
         self.nang2ng_pattern = re.compile(r'r\bnang\b')

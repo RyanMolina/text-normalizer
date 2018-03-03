@@ -17,19 +17,16 @@ FILE_PATH = os.path.dirname(__file__)
 accent_words_dict = csv_to_dict(
     os.path.join(FILE_PATH, 'training', 'data','accented_words.dic'))
 
-
 phonetic_subwords_dict = csv_to_dict(
     os.path.join(FILE_PATH, 'training', 'data', 'phonetically_styled_subwords.dic'))
 
 phonetic_words_dict = csv_to_dict(
     os.path.join(FILE_PATH, 'training', 'data', 'phonetically_styled_words.dic'))
 
-
-accent_words_dict = {v2: k for k, v in accent_words_dict.items()
-                           for v2 in v }
-
+accent_words_dict = {v2: k 
+                     for k, v in accent_words_dict.items()
+                     for v2 in v}
 pprint(accent_words_dict)
-
 dict_path = os.path.join(FILE_PATH, 'training', 'data', 'corpus', 'tagalog_sent.txt')
 
 with open(os.path.join(FILE_PATH, 'training', 'data', 'hyph_fil.tex'), 'r') as f:
@@ -40,9 +37,15 @@ tn = TextNormalizer(accent_words_dict=accent_words_dict,
                     hyphenator_dict=hyphenator_dict,
                     spell_corrector=spell_corrector)
 
-with open(os.path.join(FILE_PATH, 'tagalog_sent.txt'), 'r') as in_fp:
-    lines = in_fp.read().splitlines()
-    with open(os.path.join(FILE_PATH, 'tagalog_sent_v2.txt'), 'w') as out_fp:
-        for line in lines[:10]:
-            line = tn.accent_style(line)
-            print(line)
+while True:
+    word = input(">>> ")
+    print(tn.hyphenator.hyphenate_word(word))
+
+# with open(os.path.join(FILE_PATH, 'training', 'data', 'corpus', 'tagalog_sent_v2.txt'), 'r') as in_fp:
+#     lines = in_fp.read().splitlines()
+#     with open(os.path.join(FILE_PATH, 'training', 'data', 'corpus', 'tagalog_sent_v3.txt'), 'w') as out_fp:
+#         for line in lines:
+#             tokens = line.split()
+#             tokens = tn.mwe_tokenizer.tokenize(tokens)
+#             line = ' '.join([tn.accent_style(mwe) for mwe in tokens])
+#             print(line, file=out_fp)

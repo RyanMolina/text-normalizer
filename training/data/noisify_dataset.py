@@ -100,7 +100,8 @@ def run(src, tgt, max_seq_len=50,
 
             # Accent Style
             noisy_sentence = process_pool.map(accent_style,
-                                            ntg.mwe_tokenizer.tokenize(noisy_sentence.split()))
+                                              ntg.mwe_tokenizer.tokenize(
+                                                  noisy_sentence.split()))
 
             try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
