@@ -5,8 +5,15 @@ class SpellCorrector:
     def __init__(self, dict_path):
         self.WORDS = Counter(
             re.findall(r'\w+', open(dict_path, 'r').read()))
-        
-    def P(self, word, N=sum(self.WORDS.values())):
+
+        self.vowels = 'aeiou'
+        self.vowels += self.vowels.upper()
+        self.consonants = "bcdfghjklmnpqrstvwxyz"
+        self.consonants += self.consonants.upper()
+        self.alphabet = self.vowels + self.consonants
+
+    def P(self, word):
+        N = sum(self.WORDS.values())
         return self.WORDS[word] / N
 
     def _one_char_edits(self, word):

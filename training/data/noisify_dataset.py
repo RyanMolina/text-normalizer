@@ -3,10 +3,9 @@ import os
 import random
 import time
 from multiprocessing import Pool
-import nltk.tokenize as tokenizer
-from nltk.util import ngrams
 from .textnoisifier import TextNoisifier
-from utils.helper import csv_to_dict
+from ...utils.helper import csv_to_dict
+from .dataset_manipulation import manipulate
 
 
 def noisify(word):
@@ -23,92 +22,46 @@ def accent_style(word):
     return ntg.accent_style(word)
 
 
-def trigram(text):
-    tokens = text.split()
-    if tokens >= 3:
-        return list(ngrams(tokens, 3))
+def run(src, tgt, max_seq_len=50,
+        char_level_emb=False,
+        augment_data=False, shuffle=False, size=None):
 
-
-def collect_dataset(src, tgt, max_seq_len=50,
-                    char_level_emb=False, augment_data=False,
-                    shuffle=False, size=None):
-    """Generate a parallel clean and noisy text from a given clean text."""
-    print('# Reading file')
-    with open(src, encoding='utf8') as infile:
-        contents = infile.read()
-        dataset = [content.strip()
-                     for content in contents.splitlines()
-                     if content]
-    print('# Initialize multiprocess.Pool()')
     process_pool = Pool()
-
-    if shuffle:
-        print('# 1st shuffle of dataset')
-        random.shuffle(dataset)
-
-    if augment_data:
-        print('  [+] Augment dataset using trigram of dataset.')
-        print('      Get the trigrams of 10% of the dataset.')
-        trigrams = process_pool.map(trigram, dataset[:int(len(dataset)*0.10)])
-        print('    [-] Flattening trigrams...')
-        dataset_trigrams = [' '.join(list(gram))
-                            for grams in trigrams
-                            for gram in grams
-                            if gram]
-        print('    [-] Shuffling trigrams')
-        random.shuffle(dataset_trigrams)
-        dataset.extend(dataset_trigrams)
-        print('    [-] Add ngrams to dataset')
-        dataset_size = len(dataset)
-        print('  [+] New dataset size: {}'.format(dataset_size))
-
-    if shuffle:
-        print('# 2nd shuffle of dataset')
-        random.shuffle(dataset)
-
-    if size:
-        print('# Truncate dataset to desired dataset size.')
-        dataset = dataset[:size]
+    dataset = manipulate(src,
+                         shuffle=shuffle,
+                         augment_data=augment_data,
+                         size=size)
 
     dataset_size = len(dataset)
     sent_number = 0
     start_time = time.time()
-    print('   => Dataset Size: {}'.format(len(dataset)))
-    print('   => collecting clean and noisy sentences')
 
     filename, _ = os.path.splitext(tgt)
     noisified_file = "{}.{}".format(filename, 'enc')
-
-    with open(tgt, 'w', encoding="utf8") as decoder_file, \
+    with open(tgt, 'w', encoding='utf8') as decoder_file, \
             open(noisified_file, 'w', encoding='utf8') as encoder_file:
 
         for sentence in dataset:
             sent_number += 1
-
             if sent_number % 10000 == 0:
                 speed = 10000 / (time.time() - start_time)
                 print("      # {} "
-                      "line/s: {:.2f} "
-                      "ETA: {}".format(
-                          sent_number,
-                          speed,
-                          (dataset_size - sent_number) / speed))
+                    "line/s: {:.2f} "
+                    "ETA: {}".format(
+                        sent_number,
+                        speed,
+                        (dataset_size - sent_number) / speed))
                 start_time = time.time()
-            # TODO (done): Allow punctuations on dataset (hyphen and apostrophe only).
 
             """ TODO: Create a model to detect named-entity
-                   (but most likely named-entity occur less on dataset so the model will just copy it) """
+                (but most likely named-entity occur less on dataset so the model will just copy it) """
 
             """ TODO: add of hyphen, when affix ends with consonant and the root word starts in vowel
-                             (Fix later if the hyphens affect the overall accuracy) """
+                            (Fix later if the hyphens affect the overall accuracy) """
             # TODO: Concat seperator affix to its rootword
 
-            # TODO: Word-level seq2seq to solve ng and nang (*Priority* this is a common mistake)
-
-            # TODO (done): Generate edit distance for deletes using Peter Norvig's solution
-
             # TODO: Classifier for real words
-            
+
             # TODO: Classifier for named-entity
 
             # Errors per word top 100 - Veritcal bar chart
@@ -118,12 +71,15 @@ def collect_dataset(src, tgt, max_seq_len=50,
             # Accuracy/Error per model - Vertical bar chart
             # noisification category in informal words - pie chart
 
-            clean_sentence = sentence[:max_seq_len]
-            clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
+            if max_seq_len:
+                clean_sentence = sentence[:max_seq_len]
+                clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
+            else:
+                clean_sentence = sentence
 
             # Normalize the "r|d(oon, in, aw, ito mistakes" from Articles
-            clean_sentence = ntg.raw_daw.sub(ntg.normalize_raw_daw,
-                                             clean_sentence)
+            clean_sentence = ntg.raw_daw.sub(ntg.raw_daw_repl,
+                                            clean_sentence)
 
             # Normalize the contracted words (Siya ay -> Siya'y) from Articles
             clean_sentence = ntg.expand_pattern.sub(ntg.expand_repl,
@@ -136,14 +92,15 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 ntg.contract_repl, noisy_sentence)
 
             #  Noisify r|d(oon, in, aw, ito)
-            noisy_sentence = ntg.raw_daw.sub(ntg.raw_daw,
-                                             noisy_sentence)
+            noisy_sentence = ntg.raw_daw.sub(ntg.raw_daw_repl,
+                                            noisy_sentence)
+
+            # Misuse of word 'ng'
+            noisy_sentence = ntg.nang2ng(noisy_sentence)
 
             # Accent Style
             noisy_sentence = process_pool.map(accent_style,
-                                              ntg.mwe_tokenizer(noisy_sentence.split()))
-
-            noisy_sentence = noisy_sentence.split()
+                                            ntg.mwe_tokenizer.tokenize(noisy_sentence.split()))
 
             try:
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
@@ -167,7 +124,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
                                     .replace(' ' * 3, ' <space> ')
 
                 clean_sentence = clean_sentence.replace('` `', '<lquotes>') \
-                                       .replace("' '", '<rquotes>')
+                                    .replace("' '", '<rquotes>')
                 noisy_sentence = noisy_sentence.replace('` `', '<lquotes>') \
                                         .replace("' '", '<rquotes>')
 
@@ -177,6 +134,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
 
         decoder_file.truncate(decoder_file.tell() - 2)
         encoder_file.truncate(encoder_file.tell() - 2)
+
 
 FILE_PATH = os.path.dirname(__file__)
 

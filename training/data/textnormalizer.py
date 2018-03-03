@@ -1,3 +1,4 @@
+import random
 import re
 from pprint import pprint
 
@@ -28,7 +29,7 @@ class TextNormalizer:
         self.hyphenator = Hyphenator(patterns, exceptions)
         self.mwes = []
         for k, v in accent_words_dict.items():
-            words = k.split()
+            words = v.split()
             if len(words) > 1:
                 self.mwes.append(tuple(words))
                 words[0] = words[0].capitalize()
@@ -42,6 +43,12 @@ class TextNormalizer:
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
 
+        self.common_prefix = ['mag', 'ika', 'maki', 'paki', 'pag', 'kasing', 'labing']
+
+        self.raw_daw = \
+            re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
+                       re.IGNORECASE)
+
     @staticmethod
     def _format(match, repl):
         return "{} {}{}".format(
@@ -49,7 +56,7 @@ class TextNormalizer:
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
 
-    def raw_daw(self, match):
+    def raw_daw_repl(self, match):
         """Normalize text that misuse raw and daw before noisification."""
         if match.group(1) in self.vowels:
             return self._format(match, 'r')  # raw
@@ -59,25 +66,39 @@ class TextNormalizer:
     def expand_expr(self, text):
         return self.expand_pattern.sub(self.expand_repl, text)
 
-    def accent_styles(self, text):
+    def accent_style(self, text):
         return self._substitution(text, self.accent_words_dict)
+
+    # def ng_nang(self, text):
+
+    def normalize_hyphen(self, word):
+        # starts with freq prefixes
+        # get root word
+        # check root word if starts with vowel then ADD hyphen
+        # between prefix and root word
+
+        # second case separate identical parts of a word
+        # dahan-dahan, turo-turo, luko-luko-, taba-taba
+        def find_prefix(w):
+            for prefix in self.common_prefix:
+                if w.startswith(prefix):
+                    return prefix
+
+        prefix = find_prefix(word)
+
+        pass
 
     @staticmethod
     def _substitution(word, substitution_dict):
         """Find the substitute in the text and replace."""
-        for k, v in substitution_dict.items():
-            try:
-                is_upper = word[0].isupper()
-                is_allcaps = str.isupper(word)
-            except IndexError:
-                continue
-            word = word.lower()
-            repl = random.choice(v) if isinstance(v, list) else v
-            word = word.replace(k, repl)
-            word = word.replace("'", '')
-            if is_upper:
-                word = word.capitalize()
-                if is_allcaps:
-                    word = word.upper()
-        return word
+        is_upper = word[0].isupper()
+        is_allcaps = str.isupper(word)
 
+        word = word.lower()
+        word = substitution_dict.get(word, word)
+        word = word.replace("'", '')
+        if is_upper:
+            word = word.capitalize()
+            if is_allcaps:
+                word = word.upper()
+        return word

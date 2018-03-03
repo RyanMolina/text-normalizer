@@ -25,10 +25,18 @@ class TextNoisifier:
         self.re_hyphens = re.compile(r'(-)')
 
         self.vowels = 'aeiou'
-        self.vowels += self.vowels.upper()
+        self.lower_vowels = self.vowels
+        self.upper_vowels = self.vowels.upper()
+        self.vowels += self.upper_vowels
+
         self.consonants = "bcdfghjklmnpqrstvwxyz"
-        self.consonants += self.consonants.upper()
+        self.lower_consonants = self.consonants
+        self.upper_consonants = self.consonants.upper()
+        self.consonants += self.upper_consonants
+
         self.alphabet = self.vowels + self.consonants
+        self.lower_alphabet = ''.join(list(set(self.alphabet.lower())))
+        self.upper_alphabet = ''.join(list(set(self.alphabet.upper())))
 
         matches = re.findall(r"{(.*?)\}",
                              hyphenator_dict,
@@ -73,8 +81,6 @@ class TextNoisifier:
              re.IGNORECASE), r'\1\3')
         ]
 
-        self.common_prefix = ['mag', 'ika', 'maki', 'paki', 'pag', 'kasing', 'labing']
-
         """
         >>> nang
         Replacement for 'noong'.
@@ -87,14 +93,23 @@ class TextNoisifier:
         Pagpapahiwatig ng pagmamay-ari
         """
         # TODO: Implement this randomly and see the result if it works.
-        self.ng_nang = [
-            (re.compile(r'\bng\b'), r'nang'),
-            (re.compile(r'r\bnang\b'), r'ng'),
-        ]
+        self.ng2nang_pattern = re.compile(r'\bng\b')
+        self.ng2nang_repl = r'nang'
+        self.nang2ng_pattern = re.compile(r'r\bnang\b')
+        self.nang2ng_repl = r'ng'
 
         self.raw_daw = \
             re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
                        re.IGNORECASE)
+
+    def ng2nang(self, text):
+        return self.ng2nang_pattern.sub(self.ng2nang_repl, text)
+
+    def nang2ng(self, text):
+        return self.nang2ng_pattern.sub(self.nang2ng_repl, text)
+
+    def contract_expr(self, text):
+        return self.contract_pattern.sub(self.contract_repl, text)
 
     @staticmethod
     def _format(match, repl):
@@ -103,40 +118,12 @@ class TextNoisifier:
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
 
-
-    def raw_daw(self, match):
+    def raw_daw_repl(self, match):
         """Misuse raw and daw in sentence."""
         if match.group(1) in self.vowels:
             return self._format(match, 'd')  # raw
         elif match.group(1) in self.consonants:
             return self._format(match, 'r')  # daw
-
-    def normalize_hyphen(self, word):
-        # starts with freq prefixes
-        # get root word
-        # check root word if starts with vowel then ADD hyphen
-        # between prefix and root word
-
-        # second case separate identical parts of a word
-        # dahan-dahan, turo-turo, luko-luko-, taba-taba
-        def find_prefix(w):
-            for prefix in self.common_prefix:
-                if w.startswith(prefix):
-                    return prefix
-
-        prefix = find_prefix(word)
-
-        pass
-
-    def noisify_hyphen(self, word):
-        # starts with freq prefixes
-        # get root word
-        # check root word if starts with vowel then REMOVE hyphen
-        # between prefix and root word
-
-        # second case separate identical parts of a word
-        # dahan-dahan, turo-turo, luko-luko-, taba-taba
-        pass
 
     def remove_vowels(self, word):
         """Remove vowels randomly from a word."""
@@ -194,7 +181,7 @@ class TextNoisifier:
     def _one_char_edit(self, word):
         edit = random.choice(['del', 'ins', 'rep', 'tra'])
         idx = random.randrange(len(word) + 1)
-        letter = random.choice(self.alphabet) 
+        letter = random.choice(self.lower_alphabet)
 
         lsplit, rsplit = word[:idx], word[idx:]
         if edit == 'del' and rsplit:
@@ -212,15 +199,31 @@ class TextNoisifier:
 
     def phonetic_style_subwords(self, word):
         """Return a phonetically styled portion of a word."""
-        return self._substitution(word, self.phonetic_subwords_dict)
+        return self._subword_substitution(word, self.phonetic_subwords_dict)
 
     def phonetic_style_words(self, word):
         """Return a phonetically styled word."""
-        return self._substitution(word, self.phonetic_words_dict)
+        return self._word_substitution(word, self.phonetic_words_dict)
 
     @staticmethod
-    def _substitution(word, substitution_dict):
+    def _word_substitution(word, substitution_dict):
         """Find the substitute in the text and replace."""
+        is_upper = word[0].isupper()
+        is_allcaps = str.isupper(word)
+
+        word = word.lower()
+        v = substitution_dict.get(word, word)
+        repl = random.choice(v) if isinstance(v, list) else v
+        word = word.replace(word, repl)
+        word = word.replace("'", '')
+        if is_upper:
+            word = word.capitalize()
+            if is_allcaps:
+                word = word.upper()
+        return word
+
+    @staticmethod
+    def _subword_substitution(word, substitution_dict):
         for k, v in substitution_dict.items():
             try:
                 is_upper = word[0].isupper()
@@ -244,7 +247,8 @@ class TextNoisifier:
 
     def accent_style(self, text):
         """Accent style a word."""
-        return self._substitution(text, self.accent_words_dict)
+        text = self._word_substitution(text, self.accent_words_dict)
+        return self._subword_substitution(text, self.accent_words_dict)
 
     def group_repeating_units(self, word):
         """Group repeating units by grouping the syllables."""
@@ -297,6 +301,7 @@ class TextNoisifier:
                                           'accent_style'])
 
             word = self.dispatch_rules(selected, word)
+            word = word.replace('-', '')
         return word
 
     def dispatch_rules(self, rule, word):
