@@ -58,7 +58,7 @@ class TextNoisifier:
         pprint(self.mwes)
 
         self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes, separator=' ')
-        
+
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
 
@@ -183,7 +183,7 @@ class TextNoisifier:
 
         lsplit, rsplit = word[:idx], word[idx:]
         if edit == 'del' and rsplit:
-            word = lsplit + rsplit[1:] 
+            word = lsplit + rsplit[1:]
         elif edit == 'tra' and len(rsplit) > 1:
             word = lsplit + rsplit[1] + rsplit[0] + rsplit[2:]
         elif edit == 'rep':
@@ -274,10 +274,10 @@ class TextNoisifier:
                 units[i + 1] = str(2) + units[i + 1][(len(units[i])):]
         return ''.join(units)
 
-    def noisify(self, word, sos=False):
+    def noisify(self, word, sos=False, with_tag=False):
         """Randomly apply string manipulation.
 
-        It only accepts alphabet, apostrophe and hyphen. 
+        It only accepts alphabet, apostrophe and hyphen.
         The string length must be greater than 1.
         It doesn't accept capital letters, hacky way to avoid named-entity to be noisified.
 
@@ -285,30 +285,86 @@ class TextNoisifier:
         if self.re_accepted.search(word) \
                 and len(word) > 1 \
                 and (sos or word[0].islower()):
-            
-            value = random.random()
-            if value > 0.95:
-                selected = 'repeat_characters'
-            elif value > 0.60:
-                selected = 'misspell'
-            elif value > 0.50:
-                selected = 'phonetic_style'
-            elif value > 0.10:
-                selected = 'group_repeating_units'
-            else:
-                selected = 'remove_vowels' 
 
-            word = self.dispatch_rules(selected, word)
-            word = word.replace('-', '')
+            accented = self.accent_style(word)
+            if accented != word:
+                word = accented.replace('-', '')
+                return (word, 'accent_styles') if with_tag else word
+
+            phonetically_styled = self.phonetic_style(word)
+            if phonetically_styled != word:
+                word = phonetically_styled.replace('-', '')
+                return (word, 'phonetic_styles') if with_tag else word
+
+            grouped_units = self.group_repeating_units(word)
+            if grouped_units != word:
+                word = grouped_units.replace('-', '')
+                return (word, 'repeating_units') if with_tag else word
+
+            value = random.random()
+            selected = ''
+            if value > 0.80:
+                selected = 'repeating_characters'
+            elif value > 0.50:
+                selected = 'contractions'
+            else:
+                selected = 'misspellings'
+            noisified = self.dispatch_rules(selected, word)
+            if with_tag:
+                if noisified != word:
+                    word = word.replace('-', '')
+                    word = (noisified, selected)
+                else:
+                    word = word.replace('-', '')
+                    word = (word, None)
+            else:
+                word = noisified
+                word = word.replace('-', '')
+        else:
+            word = (word, None) if with_tag else word
+        return word
+
+    def noisify2(self, word, sos=False, with_tag=False):
+        """Randomly apply string manipulation.
+
+        It only accepts alphabet, apostrophe and hyphen.
+        The string length must be greater than 1.
+        It doesn't accept capital letters, hacky way to avoid named-entity to be noisified.
+
+        """
+        if self.re_accepted.search(word) \
+                and len(word) > 1 \
+                and (sos or word[0].islower()):
+            value = random.random()
+            selected = ''
+            if value > 0.80:
+                selected = 'repeating_characters'
+            elif value > 0.50:
+                selected = 'contractions'
+            else:
+                selected = 'misspellings'
+            noisified = self.dispatch_rules(selected, word)
+            if with_tag:
+                if noisified != word:
+                    word = word.replace('-', '')
+                    word = (noisified, selected)
+                else:
+                    word = word.replace('-', '')
+                    word = (word, None)
+            else:
+                word = noisified
+                word = word.replace('-', '')
+        else:
+            word = (word, None) if with_tag else word
         return word
 
     def dispatch_rules(self, rule, word):
         """Text noisifier dispatcher."""
         return {
-            'remove_vowels': self.remove_vowels(word),
+            'contractions': self.remove_vowels(word),
             'phonetic_style': self.phonetic_style(word),
-            'misspell': self.misspell(word),
-            'accent_style': self.accent_style(word),
-            'repeat_characters': self.repeat_characters(word),
-            'group_repeating_units': self.group_repeating_units(word)
+            'misspellings': self.misspell(word),
+            'accent_styles': self.accent_style(word),
+            'repeating_characters': self.repeat_characters(word),
+            'repeating_units': self.group_repeating_units(word)
         }.get(rule, word)

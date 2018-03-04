@@ -31,40 +31,36 @@ def main():
             print("> Generating dataset from the corpus file...") 
             os.makedirs(DATASET_PATH, exist_ok=True)
             noisify_dataset.run(CORPUS_PATH,
-                                os.path.join(MODEL_PATH,
-                                             'dataset.dec'),
+                                DATASET_PATH,
                                 char_level_emb=args.char_emb,
                                 augment_data=args.augment_data,
                                 shuffle=args.shuffle,
                                 max_seq_len=args.max_seq_len)
 
-            if args.split_dataset:
-                print("> Splitting the dataset to train/dev/test set...")
-                split_dataset.split(
-                    os.path.join(
-                        training_path, model_name,
-                        'dataset.enc'),
-                    os.path.join(training_path, model_name),
-                    'enc', test_size=500, dev_size=500)
+        print("> Splitting the dataset to train/dev/test set...")
+        split_dataset.split(
+            os.path.join(
+                DATASET_PATH,
+                'dataset.enc'),
+            os.path.join(DATASET_PATH),
+            'enc', test_size=500, dev_size=500)
 
-                split_dataset.split(
-                    os.path.join(
-                        training_path, model_name,
-                        'dataset.dec'),
-                    os.path.join(training_path, model_name),
-                    'dec', test_size=500, dev_size=500)
+        split_dataset.split(
+            os.path.join(
+                DATASET_PATH,
+                'dataset.dec'),
+            os.path.join(DATASET_PATH),
+            'dec', test_size=500, dev_size=500)
 
-            if args.generate_vocab:
-                print("> Generating the vocab files...")
-                generate_vocab.get_vocab(
-                    os.path.join(training_path, model_name, 'train.enc'),
-                    max_vocab_size=20000)
+        print("> Generating the vocab files...")
+        generate_vocab.get_vocab(
+            os.path.join(DATASET_PATH, 'train.enc'),
+            max_vocab_size=20000)
 
-                generate_vocab.get_vocab(
-                    os.path.join(training_path, model_name, 'train.dec'),
-                    max_vocab_size=20000)
-        else:
-            print('> Dataset already exists')
+        generate_vocab.get_vocab(
+            os.path.join(DATASET_PATH, 'train.dec'),
+            max_vocab_size=20000)
+
 
     if args.train:
         print("> Start trainining...")

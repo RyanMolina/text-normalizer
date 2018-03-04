@@ -90,6 +90,7 @@ python3 -m train \
 
 MODEL_B
 71.31 15.48
+72.04 13.89
 
 MODEL_A
 67.99 9.33 
@@ -97,7 +98,23 @@ MODEL_A
 MODEL_M
 71.81 13.69
 
+MODEL_NGRAM
+66.82 5.75
+
+MODEL_NGRAM_A
+70.32 13.10
+
+
 WORD-LEVEL
 Convert model_tagalog_c to word-level
 Convert model_tagalog_b to word-level
 Create model_tagalog_d word-level (apply only accent_style)
+
+
+DATASET
+A => Accent stylization only
+B => 1-pass noisification
+C => 2-pass noisification
+
+Save all tags:
+- memory expensive
