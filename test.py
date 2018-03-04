@@ -23,23 +23,28 @@ phonetic_subwords_dict = csv_to_dict(
 phonetic_words_dict = csv_to_dict(
     os.path.join(FILE_PATH, 'training', 'data', 'phonetically_styled_words.dic'))
 
-accent_words_dict = {v2: k 
-                     for k, v in accent_words_dict.items()
-                     for v2 in v}
 pprint(accent_words_dict)
 dict_path = os.path.join(FILE_PATH, 'training', 'data', 'corpus', 'tagalog_sent.txt')
 
 with open(os.path.join(FILE_PATH, 'training', 'data', 'hyph_fil.tex'), 'r') as f:
     hyphenator_dict = f.read()
 
-spell_corrector = SpellCorrector(dict_path=dict_path)
-tn = TextNormalizer(accent_words_dict=accent_words_dict,
-                    hyphenator_dict=hyphenator_dict,
-                    spell_corrector=spell_corrector)
 
+# accent_words_dict = {v2: k 
+#                      for k, v in accent_words_dict.items()
+#                      for v2 in v}
+# spell_corrector = SpellCorrector(dict_path=dict_path)
+# tn = TextNormalizer(accent_words_dict=accent_words_dict,
+#                     hyphenator_dict=hyphenator_dict,
+#                     spell_corrector=spell_corrector)
+
+tn = TextNoisifier(accent_words_dict=accent_words_dict,
+                    phonetic_words_dict=phonetic_words_dict,
+                    phonetic_subwords_dict=phonetic_subwords_dict,
+                    hyphenator_dict=hyphenator_dict)
 while True:
     word = input(">>> ")
-    print(tn.hyphenator.hyphenate_word(word))
+    print(' '.join([tn.phonetic_style(mwe) for mwe in tn.mwe_tokenizer.tokenize(word.split())]))
 
 # with open(os.path.join(FILE_PATH, 'training', 'data', 'corpus', 'tagalog_sent_v2.txt'), 'r') as in_fp:
 #     lines = in_fp.read().splitlines()

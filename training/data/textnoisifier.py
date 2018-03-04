@@ -57,7 +57,7 @@ class TextNoisifier:
         print("============= Multi-word Expressions =================")
         pprint(self.mwes)
 
-        self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes)
+        self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes, separator=' ')
         
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
@@ -65,7 +65,6 @@ class TextNoisifier:
         self.contract_pattern = re.compile(r'(\w+[aeiou])\s\ba([ty]\b)',
                                            re.IGNORECASE)
         self.contract_repl = r"\1'\2"
-
         # FIXME: Has the tendency to normalize words like "Antipolo", "Antik"
         self.text_patterns = [
             # Ang baho -> Ambaho
@@ -246,8 +245,7 @@ class TextNoisifier:
 
     def accent_style(self, text):
         """Accent style a word."""
-        text = self._word_substitution(text, self.accent_words_dict)
-        return self._subword_substitution(text, self.accent_words_dict)
+        return self._word_substitution(text, self.accent_words_dict)
 
     def group_repeating_units(self, word):
         """Group repeating units by grouping the syllables."""
@@ -289,15 +287,16 @@ class TextNoisifier:
                 and (sos or word[0].islower()):
             
             value = random.random()
-            if value > 0.90:  # slim chance
+            if value > 0.95:
                 selected = 'repeat_characters'
-            elif value > 0.3:
+            elif value > 0.60:
                 selected = 'misspell'
+            elif value > 0.50:
+                selected = 'phonetic_style'
+            elif value > 0.10:
+                selected = 'group_repeating_units'
             else:
-                selected = random.choice(['remove_vowels',
-                                          'phonetic_style',
-                                          'group_repeating_units',
-                                          'accent_style'])
+                selected = 'remove_vowels' 
 
             word = self.dispatch_rules(selected, word)
             word = word.replace('-', '')
