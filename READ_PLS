@@ -66,3 +66,24 @@ Create a model to detect Named-Entity and Normal words to avoid False Positive r
 
 Parameterized character limit on all files
 I need to remove all english words on the training data using Trigram language detections
+
+python3 -m train \
+ --dataset="dataset_name"
+ --model="model_name" \
+ --corpus="tagalog_sent_v3.txt" \
+ --split_dataset=True \
+ --generate_vocab=True \
+ --augment_data=True \
+ --shuffle=True \
+ --max_seq_len=140 \
+ --train=True
+
+ python3 -m train \
+ "model_name" \
+ --corpus="tagalog_sent_v3.txt" \
+ --split_dataset=True \
+ --generate_vocab=True \
+ --augment_data=True \
+ --shuffle=True \
+ --max_seq_len=140 \
+ --train=True
