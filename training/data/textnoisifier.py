@@ -231,7 +231,8 @@ class TextNoisifier:
             word = word.lower()
             repl = random.choice(v) if isinstance(v, list) else v
             word = word.replace(k, repl)
-            word = word.replace("'", '')
+            if random.getrandbits(1):
+                word = word.replace("'", '')
             if is_upper:
                 word = word.capitalize()
                 if is_allcaps:

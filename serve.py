@@ -7,12 +7,12 @@ from nltk.tokenize.moses import MosesDetokenizer
 class Serve:
     """Serve an instance of the trained model."""
 
-    def __init__(self, sess, model_name, checkpoint, char_emb=False):
+    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False):
         """Prepare the model's dataset and trained model."""
-        os.makedirs(os.path.join('training', 'data', 'dataset', model_name),
+        os.makedirs(os.path.join('training', 'data', 'dataset', dataset_name),
                     exist_ok=True)
         cwd = os.path.dirname(os.path.realpath(__file__))
-        data_dir = os.path.join(cwd, 'training', 'data', 'dataset', model_name)
+        data_dir = os.path.join(cwd, 'training', 'data', 'dataset', dataset_name)
         model_dir = os.path.join(cwd, 'training', 'model', model_name)
 
         hparams = utils.load_hparams(
@@ -88,12 +88,20 @@ def parse_args():
 
     parser.register("type", "bool", lambda v: v.lower() == "true")
 
-    parser.add_argument('model_name', type=str,
+    parser.add_argument('--model_name', type=str,
                         help="""
                         Name of the model to use.
                         Change only if you want to try other models.
                         Models must be saved in training/model/<model_name>
                         """)
+
+    parser.add_argument('--dataset_name', type=str,
+                        help="""
+                        Name of the model to use.
+                        Change only if you want to try other models.
+                        Models must be saved in training/model/<model_name>
+                        """)
+       
     parser.add_argument('--checkpoint', default=None, type=str,
                         help="""
                         Specify the checkpoint filename.
@@ -138,6 +146,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         NORMALIZER = Serve(sess=sess,
                            model_name=ARGS.model_name,
+                           dataset_name=ARGS.dataset_name,
                            checkpoint=ARGS.checkpoint,
                            char_emb=ARGS.char_emb)
 
