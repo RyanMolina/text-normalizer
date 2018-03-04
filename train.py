@@ -63,20 +63,24 @@ def main():
     if args.train:
         print("> Start trainining...")
         print(FILE_PATH)
-        data_dir = os.path.join(FILE_PATH, training_path, model_name)
+        data_dir = os.path.join(FILE_PATH, 'training', 'data', 'dataset', model_name)
         model_dir = os.path.join(FILE_PATH, 'training', 'model', model_name)
         os.makedirs(model_dir, exist_ok=True)
         hparams_file = os.path.join(FILE_PATH, 'hparams.json')
         noisify_dataset_file = os.path.abspath(noisify_dataset.__file__)
 
-        if not os.path.exists(os.path.join(model_dir, hparams_file)):
+        if not os.path.exists(os.path.join(model_dir, 'hparams.json')):
             print("> Backing up hparams.json")
             shutil.copy(hparams_file, os.path.join(model_dir))
+        else:
+            print('> Failed to back up: ', hparams_file)
 
         if not os.path.exists(os.path.join(data_dir, 'noisify_dataset.py')):
             print("> Backing up noisify_dataset.py")
             shutil.copy(noisify_dataset_file,
                         os.path.join(data_dir, 'noisify_dataset.py.bak'))
+        else:
+            print('> Failed to back up: ', noisify_dataset_file)
 
         hparams = utils.load_hparams(
             os.path.join(model_dir, hparams_file))

@@ -106,15 +106,16 @@ def run(src, tgt, max_seq_len=50,
                                               ntg.mwe_tokenizer.tokenize(
                                                   noisy_sentence.split()))
             try:
+                # 1st pass
                 sos = ntg.noisify(noisy_sentence[0], sos=True)
                 noisy_sentence = process_pool.map(
                     noisify, noisy_sentence[1:])
                 noisy_sentence.insert(0, sos)
-                if random.getrandbits(1):
-                    sos = ntg.noisify(noisy_sentence[0], sos=True)
-                    noisy_sentence = process_pool.map(
-                        noisify, noisy_sentence[1:])
-                    noisy_sentence.insert(0, sos)
+                # 2nd pass
+                sos = ntg.noisify(noisy_sentence[0], sos=True)
+                noisy_sentence = process_pool.map(
+                    noisify, noisy_sentence[1:])
+                noisy_sentence.insert(0, sos)
             except IndexError:
                 # It is faster than checking length of the list
                 pass

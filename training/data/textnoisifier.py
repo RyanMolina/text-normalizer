@@ -307,7 +307,7 @@ class TextNoisifier:
         return {
             'remove_vowels': self.remove_vowels(word),
             'phonetic_style': self.phonetic_style(word),
-            'misspell': self._one_char_edit(word),
+            'misspell': self.misspell(word),
             'accent_style': self.accent_style(word),
             'repeat_characters': self.repeat_characters(word),
             'group_repeating_units': self.group_repeating_units(word)

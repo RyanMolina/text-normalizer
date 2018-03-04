@@ -66,3 +66,17 @@ Create a model to detect Named-Entity and Normal words to avoid False Positive r
 
 Parameterized character limit on all files
 I need to remove all english words on the training data using Trigram language detections
+
+MODEL_B
+71.31 15.48
+
+MODEL_A
+67.99 9.33 
+
+MODEL_M
+71.81 13.69
+
+WORD-LEVEL
+Convert model_tagalog_c to word-level
+Convert model_tagalog_b to word-level
+Create model_tagalog_d word-level (apply only accent_style)
