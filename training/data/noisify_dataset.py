@@ -53,15 +53,15 @@ def _generate(text, multiprocess=True):
     # Misuse of word 'ng'
     noisy_sentence = ntg.nang2ng(noisy_sentence)
 
-    # Accent Style
-    if multiprocess:
-        noisy_sentence = process_pool.map(
-            accent_style, ntg.mwe_tokenizer.tokenize(noisy_sentence.split()))
-    else:
-        noisy_sentence = ntg.mwe_tokenizer.tokenize(noisy_sentence.split())
-        noisy_sentence = [ntg.accent_style(word)
-                          for word in noisy_sentence]
-    """
+    # # Accent Style
+    # if multiprocess:
+    #     noisy_sentence = process_pool.map(
+    #         accent_style, ntg.mwe_tokenizer.tokenize(noisy_sentence.split()))
+    # else:
+    #     noisy_sentence = ntg.mwe_tokenizer.tokenize(noisy_sentence.split())
+    #     noisy_sentence = [ntg.accent_style(word)
+    #                       for word in noisy_sentence]
+
     try:
         # 1st pass
         sos = ntg.noisify(noisy_sentence[0], sos=True)
@@ -84,7 +84,6 @@ def _generate(text, multiprocess=True):
     except IndexError:
         # It is faster than checking length of the list
         pass
-    """
     noisy_sentence = ' '.join(noisy_sentence)
     return clean_sentence, noisy_sentence
 
