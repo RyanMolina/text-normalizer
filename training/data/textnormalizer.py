@@ -10,6 +10,7 @@ class TextNormalizer:
     def __init__(self,
                  accent_words_dict,
                  spell_corrector,
+                 pandiwa_words_dict,
                  hyphenator_dict):
 
         self.spell_corrector = spell_corrector
@@ -38,13 +39,13 @@ class TextNormalizer:
         print("============= Multi-word Expressions =================")
         pprint(self.mwes)
 
-        self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes)
+        self.mwe_tokenizer = tokenizer.MWETokenizer(self.mwes, separator=' ')
 
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
 
-        self.common_prefix = ['mag', 'ika', 'maki', 'paki', 'pag', 'kasing', 'labing']
-
+        self.common_prefix = ['mag', 'ika', 'maki', 'paki',
+                              'pag', 'kasing', 'labing']
         self.raw_daw = \
             re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
                        re.IGNORECASE)
@@ -62,6 +63,9 @@ class TextNormalizer:
             return self._format(match, 'r')  # raw
         elif match.group(1) in self.consonants:
             return self._format(match, 'd')  # daw
+
+    def spell_correct(self, word):
+        return self.spell_corrector.correction(word)
 
     def expand_expr(self, text):
         return self.expand_pattern.sub(self.expand_repl, text)

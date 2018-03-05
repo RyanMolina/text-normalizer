@@ -86,13 +86,15 @@ def align_tokens(a, b):
                 a[i] = ' '
 
 
-def check_errors(enc, dec, res):
+def check_errors(enc, dec, res, tagged_words):
     enc = enc.replace('-', '<hyphen>')
     res = res.replace('-', '<hyphen>')
     dec = dec.replace('-', '<hyphen>')
+
     a, b = align_chars(list(res), list(dec))
     res_dec = ['-' if i == '' else i for i in a]
     dec_res = ['-' if j == '' else j for j in b]
+
     align_tokens(res_dec, dec_res)
     dec_res = ''.join(dec_res).split()
     res_dec = ''.join(res_dec).split()
@@ -100,6 +102,7 @@ def check_errors(enc, dec, res):
     a, b = align_chars(list(enc), list(dec))
     enc_dec = ['-' if i == '' else i for i in a]
     dec_enc = ['-' if j == '' else j for j in b]
+
     align_tokens(enc_dec, dec_enc)
     dec_enc = ''.join(dec_enc).split()
     enc_dec = ''.join(enc_dec).split()

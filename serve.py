@@ -1,8 +1,11 @@
 """Contains the Serve class."""
 import os
+from pprint import pprint
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tokenize.moses import MosesDetokenizer
-
+from .training.data.textnormalizer import TextNormalizer
+from .training.data.spellcorrector import SpellCorrector
+from .utils.helper import csv_to_dict
 
 class Serve:
     """Serve an instance of the trained model."""
@@ -11,9 +14,11 @@ class Serve:
         """Prepare the model's dataset and trained model."""
         os.makedirs(os.path.join('training', 'data', 'dataset', model_name),
                     exist_ok=True)
-        cwd = os.path.dirname(os.path.realpath(__file__))
-        data_dir = os.path.join(cwd, 'training', 'data', 'dataset', model_name)
-        model_dir = os.path.join(cwd, 'training', 'model', model_name)
+        CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
+        TRAINING_PATH = os.path.join(CURRENT_PATH, 'training') 
+
+        data_dir = os.path.join(TRAINING_PATH, 'data', 'dataset', model_name)
+        model_dir = os.path.join(TRAINING_PATH, 'model', model_name)
 
         hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
@@ -26,6 +31,33 @@ class Serve:
                                               output_dir=model_dir,
                                               output_file=checkpoint,
                                               hparams=hparams)
+        
+        ACCENT_PATH = os.path.join(TRAINING_PATH, 'data', 'accented_words.dic')
+        PANDIWA_PATH = os.path.join(TRAINING_PATH, 'data', 'pandiwa.dic')
+       
+        accent_words_dict = csv_to_dict(ACCENT_PATH)
+        accent_words_dict = {v2: k
+                             for k, v in accent_words_dict.items()
+                             for v2 in v}
+
+        pprint(accent_words_dict)
+        with open(PANDIWA_PATH, 'r') as pandiwa_file:
+            pandiwa_words_dict = pandiwa_file.read().splitlines()
+
+        with open(os.path.join(TRAINING_PATH, 'data', 'hyph_fil.tex'),
+                    'r') as f:
+            hyphenator_dict = f.read()
+
+        spell_corrector = SpellCorrector(
+                dict_path=os.path.join(
+                    TRAINING_PATH, 'data', 'corpus', 'tagalog_sent_v3.txt'))
+
+        self.t_normalizer = TextNormalizer(
+                accent_words_dict=accent_words_dict,
+                hyphenator_dict=hyphenator_dict,
+                pandiwa_words_dict=pandiwa_words_dict,
+                spell_corrector=spell_corrector)
+
 
     def model_api(self, input_data):
         """Input preprocessing before prediction.
@@ -64,8 +96,28 @@ class Serve:
                 normalized = normalized.replace(' ', '') \
                                        .replace('<space>', ' ')
 
-                normalized = self.detokenizer.detokenize(normalized.split(),
+                normalized = normalized.replace('<lquotes>', '``') \
+                                       .replace('<rquotes', "''")
+
+                normalized = normalized.split()
+                """
+                normalized = ' '.join([self.t_normalizer.spell_correct(word)
+                              for word in normalized])
+
+                normalized = self.t_normalizer.expand_expr(normalized)
+
+                normalized = self.t_normalizer.raw_daw.sub(
+                        self.t_normalizer.raw_daw_repl, normalized)
+
+                normalized = normalized.split()
+
+                normalized = [self.t_normalizer.accent_style(word)
+                              for word in self.t_normalizer.mwe_tokenizer \
+                                              .tokenize(normalized)]
+                """
+                normalized = self.detokenizer.detokenize(normalized,
                                                          return_str=True)
+                
 
             output += normalized + " "
         return output.strip()
