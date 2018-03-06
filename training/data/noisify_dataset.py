@@ -30,7 +30,7 @@ def phonetic_style(word):
     return ntg.phonetic_style(word)
 
 
-def _generate(text, multiprocess=True):
+def _generate(text):
     # Normalize the "r|d(oon, in, aw, ito mistakes" from Articles
     clean_sentence = text
     clean_sentence = ntg.raw_daw.sub(ntg.raw_daw_repl,
@@ -53,10 +53,13 @@ def _generate(text, multiprocess=True):
     # Misuse of word 'ng'
     noisy_sentence = ntg.nang2ng(noisy_sentence)
 
+    # Split
+    noisy_sentence = noisy_sentence.split()
+
     # # Accent Style
     # if multiprocess:
     #     noisy_sentence = process_pool.map(
-    #         accent_style, ntg.mwe_tokenizer.tokenize(noisy_sentence.split()))
+    #         accent_style, ntg.mwe_tokenizer.tokenize(noisy_sentence))
     # else:
     #     noisy_sentence = ntg.mwe_tokenizer.tokenize(noisy_sentence.split())
     #     noisy_sentence = [ntg.accent_style(word)
@@ -65,21 +68,13 @@ def _generate(text, multiprocess=True):
     try:
         # 1st pass
         sos = ntg.noisify(noisy_sentence[0], sos=True)
-        if multiprocess:
-            noisy_sentence = process_pool.map(
-                noisify, noisy_sentence[1:])
-        else:
-            noisy_sentence = [ntg.noisify(word)
-                              for word in noisy_sentence[1:]]
+        noisy_sentence = process_pool.map(
+            noisify, noisy_sentence[1:])
         noisy_sentence.insert(0, sos)
         # 2nd pass
         sos = ntg.noisify(noisy_sentence[0], sos=True)
-        if multiprocess:
-            noisy_sentence = process_pool.map(
-                noisify2, noisy_sentence[1:])
-        else:
-            noisy_sentence = [ntg.noisify2(word)
-                              for word in noisy_sentence[1:]]
+        noisy_sentence = process_pool.map(
+            noisify2, noisy_sentence[1:])
         noisy_sentence.insert(0, sos)
     except IndexError:
         # It is faster than checking length of the list
@@ -100,8 +95,8 @@ def run(src, tgt, max_seq_len=50,
     sent_number = 0
     start_time = time.time()
 
-    decoder_path = os.path.join(tgt, 'dataset.dec')
-    encoder_path = os.path.join(tgt, 'dataset.enc')
+    decoder_path = os.path.join(tgt, 'train.dec')
+    encoder_path = os.path.join(tgt, 'train.enc')
 
     with open(decoder_path, 'w') as decoder_file, \
             open(encoder_path, 'w') as encoder_file:
@@ -116,24 +111,6 @@ def run(src, tgt, max_seq_len=50,
                         speed,
                         (dataset_size - sent_number) / speed))
                 start_time = time.time()
-
-            """ TODO: Create a model to detect named-entity
-                (but most likely named-entity occur less on dataset so the model will just copy it) """
-
-            """ TODO: add of hyphen, when affix ends with consonant and the root word starts in vowel
-                            (Fix later if the hyphens affect the overall accuracy) """
-            # TODO: Concat seperator affix to its rootword
-
-            # TODO: Classifier for real words
-
-            # TODO: Classifier for named-entity
-
-            # Errors per word top 100 - Veritcal bar chart
-            # Correct per word top 100 - Vertical bar chart
-            # Perplexity - Line chart
-            # Applied noisification in dataset - Radar chart and Pie chart
-            # Accuracy/Error per model - Vertical bar chart
-            # noisification category in informal words - pie chart
 
             if max_seq_len:
                 clean_sentence = sentence[:max_seq_len]

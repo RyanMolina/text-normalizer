@@ -17,7 +17,7 @@ class Serve:
         CURRENT_PATH = os.path.dirname(os.path.realpath(__file__))
         TRAINING_PATH = os.path.join(CURRENT_PATH, 'training') 
 
-        data_dir = os.path.join(TRAINING_PATH, 'data', 'dataset', model_name)
+        data_dir = os.path.join(TRAINING_PATH, 'data', 'dataset', dataset_name)
         model_dir = os.path.join(TRAINING_PATH, 'model', model_name)
 
         hparams = utils.load_hparams(
@@ -74,11 +74,8 @@ class Serve:
 
         output = ""
         for sentence in sent_tokenize(input_data):
-
-            # if str.isupper(sentence):
-            #     sentence = sentence.lower()
-            # for k, v in self.common_informal_words.items():
-            #     sentence = sentence.replace(k, v)
+            if str.isupper(sentence):
+                sentence = sentence.lower()
 
             if self.char_emb:
                 tokens = ' '.join(word_tokenize(sentence)) \

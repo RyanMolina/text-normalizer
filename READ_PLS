@@ -120,3 +120,22 @@ Save all tags:
 - memory expensive
 
 app.tagged_words > accuracy_testing > app.find_errors > simplediff
+
+
+""" TODO: Create a model to detect named-entity
+    (but most likely named-entity occur less on dataset so the model will just copy it) """
+
+""" TODO: add of hyphen, when affix ends with consonant and the root word starts in vowel
+                (Fix later if the hyphens affect the overall accuracy) """
+# TODO: Concat seperator affix to its rootword
+
+# TODO: Classifier for real words
+
+# TODO: Classifier for named-entity
+
+# Errors per word top 100 - Veritcal bar chart
+# Correct per word top 100 - Vertical bar chart
+# Perplexity - Line chart
+# Applied noisification in dataset - Radar chart and Pie chart
+# Accuracy/Error per model - Vertical bar chart
+# noisification category in informal words - pie chart

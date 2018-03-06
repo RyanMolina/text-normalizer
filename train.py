@@ -37,21 +37,6 @@ def main():
                                 shuffle=args.shuffle,
                                 max_seq_len=args.max_seq_len)
 
-        print("> Splitting the dataset to train/dev/test set...")
-        split_dataset.split(
-            os.path.join(
-                DATASET_PATH,
-                'dataset.enc'),
-            os.path.join(DATASET_PATH),
-            'enc', test_size=500, dev_size=500)
-
-        split_dataset.split(
-            os.path.join(
-                DATASET_PATH,
-                'dataset.dec'),
-            os.path.join(DATASET_PATH),
-            'dec', test_size=500, dev_size=500)
-
         print("> Generating the vocab files...")
         generate_vocab.get_vocab(
             os.path.join(DATASET_PATH, 'train.enc'),
