@@ -37,14 +37,14 @@ def main():
                                 shuffle=args.shuffle,
                                 max_seq_len=args.max_seq_len)
 
-        print("> Generating the vocab files...")
-        generate_vocab.get_vocab(
-            os.path.join(DATASET_PATH, 'train.enc'),
-            max_vocab_size=20000)
+            print("> Generating the vocab files...")
+            generate_vocab.get_vocab(
+                os.path.join(DATASET_PATH, 'train.enc'),
+                max_vocab_size=20000)
 
-        generate_vocab.get_vocab(
-            os.path.join(DATASET_PATH, 'train.dec'),
-            max_vocab_size=20000)
+            generate_vocab.get_vocab(
+                os.path.join(DATASET_PATH, 'train.dec'),
+                max_vocab_size=20000)
 
 
     if args.train:
