@@ -1,0 +1,36 @@
+
+# Directories and files to ignore when uploading code to floyd
+
+.git
+.eggs
+eggs
+lib
+lib64
+parts
+sdist
+var
+*.pyc
+*.swp
+.DS_Store
+
+
+__pycache__/
+.idea/*
+.vscode/*
+*.pyc
+*.pyo
+
+venv/*
+
+# Trained models
+training/model/*
+!training/model/.gitkeep
+
+# Corpus collected
+training/data/corpus/*
+!training/data/corpus/spiders
+!training/data/corpus/.gitkeep
+
+# Dataset generated
+training/data/dataset/*
+!training/data/dataset/.gitkeep

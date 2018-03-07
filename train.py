@@ -25,6 +25,8 @@ def main():
     DATASET_PATH = os.path.join(TRAIN_PATH, 'data', 'dataset', dataset_name)
     CORPUS_PATH = os.path.join(TRAIN_PATH, 'data', 'corpus', corpus_name)
 
+    if not args.gpu_mode:
+        os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     if args.corpus_name:
         if not os.path.exists(DATASET_PATH):
@@ -58,18 +60,14 @@ def main():
         if not os.path.exists(os.path.join(MODEL_PATH, 'hparams.json')):
             print("> Backing up hparams.json")
             shutil.copy(hparams_file, MODEL_PATH)
-        else:
-            print('> Failed to back up: ', hparams_file)
 
-        if not os.path.exists(os.path.join(DATASET_PATH, 'noisify_dataset.py')):
+        if not os.path.exists(os.path.join(DATASET_PATH, 'noisify_dataset.py.bak')):
             print("> Backing up noisify_dataset.py")
             shutil.copy(noisify_dataset_file,
                         os.path.join(DATASET_PATH, 'noisify_dataset.py.bak'))
-        else:
-            print('> Failed to back up: ', noisify_dataset_file)
 
         hparams = utils.load_hparams(
-            os.path.join(MODEL_PATH, hparams_file))
+            os.path.join(MODEL_PATH, 'hparams.json'))
 
         normalizer_trainer = trainer.Trainer(
             data_dir=DATASET_PATH, model_dir=MODEL_PATH, hparams=hparams)
@@ -97,6 +95,11 @@ def parse_args():
 
     parser.add_argument('--corpus_name', type=str, default=None,
                         help="Generate parallel noisy text")
+
+
+    parser.add_argument('--gpu_mode', type="bool", nargs="?", const=True,
+                        default=True, help="Train with GPU")    
+    
 
     parser.add_argument('--train',
                         type="bool", nargs="?", const=True,

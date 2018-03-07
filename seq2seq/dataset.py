@@ -14,10 +14,7 @@ class Dataset:
 
     def __init__(self, dataset_dir, hparams=None, training=True):
 
-        if hparams is None:
-            self.hparams = utils.load_hparams(dataset_dir)
-        else:
-            self.hparams = hparams
+        self.hparams = hparams
 
         self.src_max_len = self.hparams.src_max_len
         self.tgt_max_len = self.hparams.tgt_max_len

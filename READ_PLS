@@ -104,6 +104,8 @@ MODEL_NGRAM
 MODEL_NGRAM_A
 70.32 13.10
 
+60.28
+62
 
 WORD-LEVEL
 Convert model_tagalog_c to word-level
