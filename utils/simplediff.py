@@ -91,6 +91,16 @@ def check_errors(enc, dec, res, tagged_words):
     res = res.replace('-', '<hyphen>')
     dec = dec.replace('-', '<hyphen>')
 
+    tagged_enc = []
+    tags_count = {
+        'accent_styles': 0,
+        'phonetic_styles': 0,
+        'contractions': 0,
+        'repeating_characters': 0,
+        'repeating_units': 0,
+        'misspellings': 0,
+    }
+
     a, b = align_chars(list(res), list(dec))
     res_dec = ['-' if i == '' else i for i in a]
     dec_res = ['-' if j == '' else j for j in b]
@@ -123,6 +133,12 @@ def check_errors(enc, dec, res, tagged_words):
             pass
 
         try:
+            tag = tagged_words.get(enc_dec[i].lower())
+            if tag:
+                tagged_enc.append('<abbr title="{}">{}</abbr>'.format(tag, enc_dec[i]))
+            else:
+                tagged_enc.append(enc_dec[i])
+
             if not res_dec[i] and enc_dec[i] == dec_enc[i]:
                 """Checks if the result is not in the expected output."""
                 fp += 1
@@ -134,6 +150,9 @@ def check_errors(enc, dec, res, tagged_words):
                 output.append('<span class="false-pos">{}</span>'.format(res_dec[i]))
             elif dec_res[i] == res_dec[i]:
                 """Checks if the result is equal to expected output."""
+                if tag:
+                    tags_count[tag] = tags_count.get(tag, 0) + 1
+                    print(tag, tags_count[tag])
                 tp += 1
                 output.append(res_dec[i])
             else:
@@ -147,4 +166,4 @@ def check_errors(enc, dec, res, tagged_words):
                 output.append('<span class="true-neg">{}</span>'.format(res_dec[i]))
             else:
                 output.append(res_dec[i])
-    return ' '.join(output), TestStatistics(tp=tp, fn=0, tn=tn, fp=fp)
+    return ' '.join(output), TestStatistics(tp=tp, fn=0, tn=tn, fp=fp), ' '.join(tagged_enc), tags_count

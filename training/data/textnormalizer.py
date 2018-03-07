@@ -7,6 +7,7 @@ from .hyphenator import Hyphenator
 
 
 class TextNormalizer:
+    """Used for normalization of common errors in the dataset."""
     def __init__(self,
                  accent_words_dict,
                  spell_corrector,
@@ -44,6 +45,17 @@ class TextNormalizer:
         self.expand_pattern = re.compile(r"(\w+[aeiou])'([yt])", re.IGNORECASE)
         self.expand_repl = r'\1 a\2'
 
+        self.text_patterns = [
+            # Ang baho -> Ambaho
+            (re.compile(r'(\b[aA]m)(\b[bp]\w+\b)'), r'\1ng \2'),
+            # Ang dami -> Andami
+            (re.compile(r'(\b[aA]n)(\b[gkhsldt]\w+\b)'), r'\1g \2'),
+            # Ano ba -> Anuba
+            (re.compile(r'(\b[aA]n)(\b\w{,3}\b)'), r'\1o \2'),
+            # Pagkain -> Pag kain
+            (re.compile(r'(pag|mag|ika|kasing|maki|paki|labing)\s(\w+)'), r'\1\2'),
+        ]
+
         self.common_prefix = ['mag', 'ika', 'maki', 'paki',
                               'pag', 'kasing', 'labing']
         self.raw_daw = \
@@ -56,6 +68,8 @@ class TextNormalizer:
             match.group(1),
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
+
+    def 
 
     def raw_daw_repl(self, match):
         """Normalize text that misuse raw and daw before noisification."""
