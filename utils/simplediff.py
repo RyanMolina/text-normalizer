@@ -93,12 +93,12 @@ def check_errors(enc, dec, res, tagged_words):
 
     tagged_enc = []
     tags_count = {
-        'accent_styles': 0,
-        'phonetic_styles': 0,
-        'contractions': 0,
-        'repeating_characters': 0,
-        'repeating_units': 0,
-        'misspellings': 0,
+        'accent_styles': {'fp': 0, 'tp': 0, 'tn': 0},
+        'phonetic_styles': {'fp': 0, 'tp': 0, 'tn': 0},
+        'contractions': {'fp': 0, 'tp': 0, 'tn': 0},
+        'repeating_characters': {'fp': 0, 'tp': 0, 'tn': 0},
+        'repeating_units': {'fp': 0, 'tp': 0, 'tn': 0},
+        'misspellings': {'fp': 0, 'tp': 0, 'tn': 0},
     }
 
     a, b = align_chars(list(res), list(dec))
@@ -120,7 +120,6 @@ def check_errors(enc, dec, res, tagged_words):
     tp = 0
     tn = 0
     fp = 0
-    total = 0
 
     output = []
     for i in range(len(res_dec)):
@@ -141,29 +140,35 @@ def check_errors(enc, dec, res, tagged_words):
 
             if not res_dec[i] and enc_dec[i] == dec_enc[i]:
                 """Checks if the result is not in the expected output."""
-                fp += 1
+                if tag:
+                    tags_count[tag]['fp'] = tags_count.get(tag).get('fp', 0) + 1
+
                 if res_dec[i]:
                     output.append('<span class="false-pos">{}</span>'.format(res_dec[i]))
+                fp += 1
             elif enc_dec[i] == dec_enc[i] and res_dec[i] != dec_res[i]:
                 """Checks if the already normalized input have been informalized"""
-                fp += 1
+                if tag:
+                    tags_count[tag]['fp'] = tags_count.get(tag).get('fp', 0) + 1
+
                 output.append('<span class="false-pos">{}</span>'.format(res_dec[i]))
+                fp += 1
             elif dec_res[i] == res_dec[i]:
                 """Checks if the result is equal to expected output."""
                 if tag:
-                    tags_count[tag] = tags_count.get(tag, 0) + 1
-                    print(tag, tags_count[tag])
-                tp += 1
+                    tags_count[tag]['tp'] = tags_count.get(tag).get('tp', 0) + 1
+
                 output.append(res_dec[i])
+                tp += 1
             else:
                 """The result is not the same with the expected output."""
-                tn += 1
                 output.append('<span class="true-neg">{}</span>'.format(res_dec[i]))
+                tn += 1
         except IndexError:
             """Marks extra words as errors."""
             if res_dec[i] != dec_res[i]:
-                tn += 1
                 output.append('<span class="true-neg">{}</span>'.format(res_dec[i]))
             else:
                 output.append(res_dec[i])
+            tn += 1
     return ' '.join(output), TestStatistics(tp=tp, fn=0, tn=tn, fp=fp), ' '.join(tagged_enc), tags_count

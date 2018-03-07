@@ -47,11 +47,11 @@ class TextNormalizer:
 
         self.text_patterns = [
             # Ang baho -> Ambaho
-            (re.compile(r'(\b[aA]m)(\b[bp]\w+\b)'), r'\1ng \2'),
+            (re.compile(r'(\b[aA]m)([bp]\w+\b)'), r'\1ng \2'),
             # Ang dami -> Andami
-            (re.compile(r'(\b[aA]n)(\b[gkhsldt]\w+\b)'), r'\1g \2'),
+            (re.compile(r'(\b[aA]n)([gkhsldt]\w+\b)'), r'\1g \2'),
             # Ano ba -> Anuba
-            (re.compile(r'(\b[aA]n)(\b\w{,3}\b)'), r'\1o \2'),
+            (re.compile(r'(\b[aA]n)(\w{,3}\b)'), r'\1o \2'),
             # Pagkain -> Pag kain
             (re.compile(r'(pag|mag|ika|kasing|maki|paki|labing)\s(\w+)'), r'\1\2'),
         ]
@@ -69,8 +69,12 @@ class TextNormalizer:
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
 
-    def 
-
+    def am_repl(self, match):
+        pass
+    
+    def an_repl(self, match):
+        pass
+    
     def raw_daw_repl(self, match):
         """Normalize text that misuse raw and daw before noisification."""
         if match.group(1) in self.vowels:
