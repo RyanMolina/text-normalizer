@@ -10,7 +10,7 @@ from .utils.helper import csv_to_dict
 class Serve:
     """Serve an instance of the trained model."""
 
-    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False):
+    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False, mitigate_problems=False):
         """Prepare the model's dataset and trained model."""
         os.makedirs(os.path.join('training', 'data', 'dataset', dataset_name),
                     exist_ok=True)
@@ -31,32 +31,33 @@ class Serve:
                                               output_dir=model_dir,
                                               output_file=checkpoint,
                                               hparams=hparams)
+        self.mitigate_problems = mitigate_problems
+        if self.mitigate_problems: 
+            ACCENT_PATH = os.path.join(TRAINING_PATH, 'data', 'accented_words.dic')
+            PANDIWA_PATH = os.path.join(TRAINING_PATH, 'data', 'pandiwa.dic')
         
-        ACCENT_PATH = os.path.join(TRAINING_PATH, 'data', 'accented_words.dic')
-        PANDIWA_PATH = os.path.join(TRAINING_PATH, 'data', 'pandiwa.dic')
-       
-        accent_words_dict = csv_to_dict(ACCENT_PATH)
-        accent_words_dict = {v2: k
-                             for k, v in accent_words_dict.items()
-                             for v2 in v}
+            accent_words_dict = csv_to_dict(ACCENT_PATH)
+            accent_words_dict = {v2: k
+                                for k, v in accent_words_dict.items()
+                                for v2 in v}
 
-        pprint(accent_words_dict)
-        with open(PANDIWA_PATH, 'r') as pandiwa_file:
-            pandiwa_words_dict = pandiwa_file.read().splitlines()
+            pprint(accent_words_dict)
+            with open(PANDIWA_PATH, 'r') as pandiwa_file:
+                pandiwa_words_dict = pandiwa_file.read().splitlines()
 
-        with open(os.path.join(TRAINING_PATH, 'data', 'hyph_fil.tex'),
-                    'r') as f:
-            hyphenator_dict = f.read()
+            with open(os.path.join(TRAINING_PATH, 'data', 'hyph_fil.tex'),
+                        'r') as f:
+                hyphenator_dict = f.read()
 
-        spell_corrector = SpellCorrector(
-                dict_path=os.path.join(
-                    TRAINING_PATH, 'data', 'corpus', 'tagalog_sent_v3.txt'))
+            spell_corrector = SpellCorrector(
+                    dict_path=os.path.join(
+                        TRAINING_PATH, 'data', 'corpus', 'tagalog_sent_v3.txt'))
 
-        self.t_normalizer = TextNormalizer(
-                accent_words_dict=accent_words_dict,
-                hyphenator_dict=hyphenator_dict,
-                pandiwa_words_dict=pandiwa_words_dict,
-                spell_corrector=spell_corrector)
+            self.t_normalizer = TextNormalizer(
+                    accent_words_dict=accent_words_dict,
+                    hyphenator_dict=hyphenator_dict,
+                    pandiwa_words_dict=pandiwa_words_dict,
+                    spell_corrector=spell_corrector)
 
 
     def model_api(self, input_data):
@@ -97,21 +98,22 @@ class Serve:
                                        .replace('<rquotes', "''")
 
                 normalized = normalized.split()
-                """
-                normalized = ' '.join([self.t_normalizer.spell_correct(word)
-                              for word in normalized])
+                
+                if self.mitigate_problems:
+                    normalized = ' '.join([self.t_normalizer.spell_correct(word)
+                                for word in normalized])
 
-                normalized = self.t_normalizer.expand_expr(normalized)
+                    normalized = self.t_normalizer.expand_expr(normalized)
 
-                normalized = self.t_normalizer.raw_daw.sub(
-                        self.t_normalizer.raw_daw_repl, normalized)
+                    normalized = self.t_normalizer.raw_daw.sub(
+                            self.t_normalizer.raw_daw_repl, normalized)
 
-                normalized = normalized.split()
+                    normalized = normalized.split()
 
-                normalized = [self.t_normalizer.accent_style(word)
-                              for word in self.t_normalizer.mwe_tokenizer \
-                                              .tokenize(normalized)]
-                """
+                    normalized = [self.t_normalizer.accent_style(word)
+                                for word in self.t_normalizer.mwe_tokenizer \
+                                                .tokenize(normalized)]
+
                 normalized = self.detokenizer.detokenize(normalized,
                                                          return_str=True)
                 
