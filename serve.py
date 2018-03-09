@@ -10,7 +10,7 @@ from .utils.helper import csv_to_dict
 class Serve:
     """Serve an instance of the trained model."""
 
-    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False, mitigate_problems=False):
+    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False, fix_problems=False):
         """Prepare the model's dataset and trained model."""
         os.makedirs(os.path.join('training', 'data', 'dataset', dataset_name),
                     exist_ok=True)
@@ -31,8 +31,8 @@ class Serve:
                                               output_dir=model_dir,
                                               output_file=checkpoint,
                                               hparams=hparams)
-        self.mitigate_problems = mitigate_problems
-        if self.mitigate_problems: 
+        self.fix_problems = fix_problems
+        if self.fix_problems: 
             ACCENT_PATH = os.path.join(TRAINING_PATH, 'data', 'accented_words.dic')
             PANDIWA_PATH = os.path.join(TRAINING_PATH, 'data', 'pandiwa.dic')
         
@@ -99,7 +99,7 @@ class Serve:
 
                 normalized = normalized.split()
                 
-                if self.mitigate_problems:
+                if self.fix_problems:
                     normalized = ' '.join([self.t_normalizer.spell_correct(word)
                                 for word in normalized])
 
@@ -165,6 +165,11 @@ def parse_args():
                         Char-level or word-level embedding
                         """
                         )
+
+    parser.add_argument('--twitter',
+                         type="bool", nargs="?", const=False,
+                         default=False)
+
     parser.add_argument('--input_file', type=str, default=None,
                         help="""
                         File you want to normalize
