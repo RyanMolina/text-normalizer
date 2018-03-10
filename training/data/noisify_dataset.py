@@ -56,29 +56,20 @@ def _generate(text):
     # Split
     noisy_sentence = noisy_sentence.split()
 
-    # # Accent Style
-    # if multiprocess:
-    #     noisy_sentence = process_pool.map(
-    #         accent_style, ntg.mwe_tokenizer.tokenize(noisy_sentence))
-    # else:
-    #     noisy_sentence = ntg.mwe_tokenizer.tokenize(noisy_sentence.split())
-    #     noisy_sentence = [ntg.accent_style(word)
-    #                       for word in noisy_sentence]
-
     try:
         # 1st pass
         sos = ntg.noisify(noisy_sentence[0], sos=True)
-        noisy_sentence = process_pool.map(
-            noisify, noisy_sentence[1:])
+        noisy_sentence = process_pool.map(noisify,
+                                          noisy_sentence[1:])
         noisy_sentence.insert(0, sos)
         # 2nd pass
         sos = ntg.noisify(noisy_sentence[0], sos=True)
-        noisy_sentence = process_pool.map(
-            noisify2, noisy_sentence[1:])
+        noisy_sentence = process_pool.map(noisify2,
+                                          noisy_sentence[1:])
         noisy_sentence.insert(0, sos)
     except IndexError:
-        # It is faster than checking length of the list
         pass
+
     noisy_sentence = ' '.join(noisy_sentence)
     return clean_sentence, noisy_sentence
 
