@@ -79,16 +79,10 @@ class Serve:
                 sentence = sentence.lower()
 
             if self.char_emb:
-                tokens = ' '.join(word_tokenize(sentence)) \
-                    .replace('``', '"') \
-                    .replace("''", '"')
-
-                tokens = self._char_emb_format(tokens)
-            else:
-                tokens = sentence
+                sentence = self._char_emb_format(sentence)
 
             # tokens = tokens.lower()
-            normalized = self.normalizer.predict(tokens)
+            normalized = self.normalizer.predict(sentence)
 
             if self.char_emb:
                 normalized = normalized.replace(' ', '') \
@@ -123,8 +117,10 @@ class Serve:
 
     @staticmethod
     def _char_emb_format(text):
-        return ' '.join(list(text)).replace(' ' * 3, ' <space> ')
-
+        text = ' '.join(list(text)).replace(' '*3, ' <space> ')
+        text = text.replace('` `', '<lquotes>') \
+                        .replace("' '", '<rquotes>')
+        return text
 
 def parse_args():
     """Parse the arguments needed before running.
