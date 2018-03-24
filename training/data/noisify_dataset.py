@@ -105,6 +105,7 @@ def collect_dataset(src, tgt, max_seq_len=50,
                 start_time = time.time()
 
             clean_sentence = sentence[:max_seq_len]
+            clean_sentence = clean_sentence[:clean_sentence.rfind(' ')]
 
             # Normalize first the contracted words from News Site Articles
             clean_sentence = ntg.expansion(clean_sentence)

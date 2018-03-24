@@ -1,13 +1,14 @@
 """Contains the Serve class."""
 import os
 import argparse
-from utils.tokenizer import word_tokenize, sent_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
+# from utils.tokenizer import word_tokenize, sent_tokenize
 
 
 class Serve:
     """Serve an instance of the trained model."""
 
-    def __init__(self, sess, model_name, checkpoint, char_emb=False):
+    def __init__(self, sess, model_name, checkpoint, char_emb=False, max_seq_len=140):
         """Prepare the model's dataset and trained model."""
         os.makedirs(os.path.join('training', 'data', 'dataset', model_name),
                     exist_ok=True)
@@ -35,11 +36,11 @@ class Serve:
         """
         output = ""
         for sentence in sent_tokenize(input_data):
-            if self.char_emb:
-                tokens = self._char_emb_format(sentence)
-            else:
-                tokens = sentence  # word-level emb
-    
+            sentence = sentence[:max_seq_len]
+            max_seq_len = sentence.rfind(' ')
+            sentence = sentence[:max_seq_len]
+            tokens = self._char_emb_format(sentence)
+
             normalized = self.normalizer.predict(tokens)
 
             if self.char_emb:
