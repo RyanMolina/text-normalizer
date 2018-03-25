@@ -10,13 +10,13 @@ the perplexity of the model on the test set is
 
 PP(W) = P(w_1, w_2, w_3) ^ (-1/N)
 
-However, perplexity is not a definite way of sdetermining the usefulness of a
+However, perplexity is not a definite way of determining the usefulness of a
 language model. A model with low perplexity on a test set may not work eually
 well in real world application whose data may not be drawn from the same
 distribution as the test set. However, in the lack of efficient means to
 evaluate language model, perplexity is a useful metric for comparing language models.
 
-Howeever, in hte lack of efficient means to evaluate language model, Perplexity
+Howeever, in the lack of efficient means to evaluate language model, Perplexity
 is a useful metric for comparing language models.
 
 * Losses.
@@ -141,6 +141,20 @@ app.tagged_words > accuracy_testing > app.find_errors > simplediff
 # Applied noisification in dataset - Radar chart and Pie chart
 # Accuracy/Error per model - Vertical bar chart
 # noisification category in informal words - pie chart
+
+
+# Word-level vs Char-level
+## Pros
+-   Does not generate another unknown word but just retain the original.
+-   Does not easily generate false positive result.
+-   Does not have the hard time to predict ambiguous contracted words
+-   Faster
+## Cons
+-   High memory, to store all vocabularies.
+-   Weak on prediction high variance style, like the repeating characters, removal of vowels.
+
+
+
 
 Uncommon Filipino Words
 halagambilang - score

@@ -9,9 +9,12 @@ def char_embedding(text):
                     .replace("' '", '<rquotes>')
     return text
 
+
 def word_embedding(text):
     """From char_embedding to word_embedding."""
-    return text.replace(' ', '').replace('<space>', ' ')
+    text = text.replace(' ', '').replace('<space>', ' ')
+    text = text.replace('<lquotes>', '``').replace('<rquotes>', "''")
+    return text
 
 
 def parse_args():

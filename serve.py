@@ -7,6 +7,7 @@ from .training.data.textnormalizer import TextNormalizer
 from .training.data.spellcorrector import SpellCorrector
 from .utils.helper import csv_to_dict
 
+
 class Serve:
     """Serve an instance of the trained model."""
 
@@ -75,19 +76,11 @@ class Serve:
 
         output = ""
         for sentence in sent_tokenize(input_data):
-            if str.isupper(sentence):
-                sentence = sentence.lower()
+            sentence = sentence[:max_seq_len]
+            max_seq_len = sentence.rfind(' ')
+            sentence = sentence[:max_seq_len]
+            tokens = self._char_emb_format(sentence)
 
-            if self.char_emb:
-                tokens = ' '.join(word_tokenize(sentence)) \
-                    .replace('``', '"') \
-                    .replace("''", '"')
-
-                tokens = self._char_emb_format(tokens)
-            else:
-                tokens = sentence
-
-            # tokens = tokens.lower()
             normalized = self.normalizer.predict(tokens)
 
             if self.char_emb:
@@ -123,8 +116,10 @@ class Serve:
 
     @staticmethod
     def _char_emb_format(text):
-        return ' '.join(list(text)).replace(' ' * 3, ' <space> ')
-
+        text = ' '.join(list(text)).replace(' '*3, ' <space> ')
+        text = text.replace('` `', '<lquotes>') \
+                        .replace("' '", '<rquotes>')
+        return text
 
 def parse_args():
     """Parse the arguments needed before running.

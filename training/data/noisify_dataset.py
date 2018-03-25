@@ -2,6 +2,7 @@
 import os
 import random
 import time
+from collections import Counter
 from multiprocessing import Pool
 from .textnoisifier import TextNoisifier
 from ...utils.helper import csv_to_dict
@@ -51,7 +52,7 @@ def _generate(text):
                                      noisy_sentence)
 
     # Misuse of word 'ng'
-    noisy_sentence = ntg.nang2ng(noisy_sentence)
+    # noisy_sentence = ntg.nang2ng(noisy_sentence)
 
     # Split
     noisy_sentence = noisy_sentence.split()
@@ -82,6 +83,10 @@ def run(src, tgt, max_seq_len=50,
                          shuffle=shuffle,
                          augment_data=augment_data,
                          size=size)
+    with open(src, encoding='utf8') as infile:
+        contents = infile.read()
+    ntg.vocabulary = dict(Counter(contents.split()))
+
     dataset_size = len(dataset)
     sent_number = 0
     start_time = time.time()
@@ -111,20 +116,42 @@ def run(src, tgt, max_seq_len=50,
 
             clean_sentence, noisy_sentence = _generate(clean_sentence)
 
+            contracted = [ntg.remove_all_vowels(word) for word in clean_sentence.split()]
+            contracted = ' '.join(contracted)
+
+            repeating_units = [ntg.group_repeating_units(word) for word in clean_sentence.split()]
+            repeating_units = ' '.join(repeating_units)
+
             if char_level_emb:
                 clean_sentence = ' '.join(list(clean_sentence)) \
                                     .replace(' ' * 3, ' <space> ')
-                noisy_sentence = ' '.join(list(noisy_sentence)) \
-                                    .replace(' ' * 3, ' <space> ')
-
                 clean_sentence = clean_sentence.replace('` `', '<lquotes>') \
                                     .replace("' '", '<rquotes>')
+
+                noisy_sentence = ' '.join(list(noisy_sentence)) \
+                                    .replace(' ' * 3, ' <space> ')
                 noisy_sentence = noisy_sentence.replace('` `', '<lquotes>') \
+                                        .replace("' '", '<rquotes>')
+
+                repeating_units = ' '.join(list(repeating_units)) \
+                                    .replace(' ' * 3, ' <space> ')
+                repeating_units = repeating_units.replace('` `', '<lquotes>') \
+                                        .replace("' '", '<rquotes>')
+                
+                contracted = ' '.join(list(contracted)) \
+                                    .replace(' ' * 3, ' <space> ')
+                contracted = contracted.replace('` `', '<lquotes>') \
                                         .replace("' '", '<rquotes>')
 
             if len(clean_sentence) > 1 and len(noisy_sentence) > 1:
                 decoder_file.write(clean_sentence + "\n")
                 encoder_file.write(noisy_sentence + "\n")
+
+                decoder_file.write(clean_sentence + "\n")
+                encoder_file.write(repeating_units + "\n")
+
+                decoder_file.write(clean_sentence + "\n")
+                encoder_file.write(contracted + "\n")
 
         decoder_file.truncate(decoder_file.tell() - 2)
         encoder_file.truncate(encoder_file.tell() - 2)
@@ -161,7 +188,6 @@ def run(src, tgt, max_seq_len=50,
             noisy_sentence = [ntg.noisify(word, with_tag=True)
                               for word in ntg.mwe_tokenizer.tokenize(
                                   clean_sentence.split())]
-            print(noisy_sentence)
             noisy_sent_output = ''
             for noisy_word, tag in noisy_sentence:
                 if tag == 'accent_styles':

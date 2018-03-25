@@ -99,6 +99,7 @@ class TextNoisifier:
         self.raw_daw = \
             re.compile(r'\b([^aeiou]|[aeiou])\b\s([dr])(aw|ito|oon|in)',
                        re.IGNORECASE)
+        self.vocabulary = None
 
     def ng2nang(self, text):
         return self.ng2nang_pattern.sub(self.ng2nang_repl, text)
@@ -154,6 +155,19 @@ class TextNoisifier:
                 word = word[0] \
                     + word[1:-1].translate(remove_vowel_rule) \
                     + word[-1]
+        elif len(word) == 2 and word[-1] in self.vowels:
+            word = word[0]
+        return word
+
+    def remove_all_vowels(self, word):
+        remove_vowel_rule = str.maketrans(dict.fromkeys(self.vowels,
+                                                        None))
+        if len(word) == 4 and word[0] in self.vowels and random.getrandbits(1):
+            word = word[1:]
+        elif not self.re_adj_vowels.search(word) and len(word) > 3:
+            word = word[0] \
+                + word[1:-1].translate(remove_vowel_rule) \
+                + word[-1]
         elif len(word) == 2 and word[-1] in self.vowels:
             word = word[0]
         return word
@@ -287,15 +301,15 @@ class TextNoisifier:
                 and len(word) > 1 \
                 and (sos or word[0].islower()):
 
-            accented = self.accent_style(word)
-            if accented != word:
-                word = accented.replace('-', '')
-                return (word, 'accent_styles') if with_tag else word
+            # accented = self.accent_style(word)
+            # if accented != word:
+            #     word = accented.replace('-', '')
+            #     return (word, 'accent_styles') if with_tag else word
 
-            phonetically_styled = self.phonetic_style(word)
-            if phonetically_styled != word:
-                word = phonetically_styled.replace('-', '')
-                return (word, 'phonetic_styles') if with_tag else word
+            # phonetically_styled = self.phonetic_style(word)
+            # if phonetically_styled != word:
+            #     word = phonetically_styled.replace('-', '')
+            #     return (word, 'phonetic_styles') if with_tag else word
 
             grouped_units = self.group_repeating_units(word)
             if grouped_units != word:
@@ -312,7 +326,7 @@ class TextNoisifier:
                 selected = 'misspellings'
             noisified = self.dispatch_rules(selected, word)
             if with_tag:
-                if noisified != word:
+                if noisified != word and not self.vocabulary.get(noisified):
                     word = word.replace('-', '')
                     word = (noisified, selected)
                 else:

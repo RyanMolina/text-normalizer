@@ -1,38 +1,17 @@
 ayaw,ayw
+hindi nga,dinga
 kahit,ket
 pahingi,penge
 pahiram,peram
 bakit,baket
-nandiyan,anjan
-ako,aq
-ayaw ko,auq
 hindi ba,dba
-gusto,gus2
-dito,d2
-diyan,jan
-diyos ko,jusq
-kayo,kaunti
-kasi,kc
-maka2log,makatulog
-medyo,mejo
-ngayon,ngaun
-pasensiya,pasenxa
 puwede,pwede
-puwerde,pede
-ko,q
-sakit,sak8t
+puwede,pede
 tainga,tenga
-sayo,sau
-tayo,tau
-yun,un
-yung,ung
-gusto ko,us2q
-siya,xa
 ito,eto
 nito,neto
 ito,itu
 bwisit,boset
-ayaw ko,auq
 ayaw ko,yoko
 oo,uu
 namin,namen
@@ -75,7 +54,6 @@ diyos ko,jusko
 kapag,pag
 akala,kala
 inyo,nyo
-ano,no
 iyong,yung
 iyon,yun
 sa atin,satin
@@ -89,6 +67,7 @@ bahala,bala
 ano iyon,nuyun
 tapos,tas
 dios ko,jusko
+diyos,dios
 ano nangyari,anyare
 anong nangyari,anyare
 ang baho,ambaho
@@ -109,8 +88,7 @@ ang talino,antalino
 ang tikas,antikas
 ang torpe,antorpe
 ano ba,anuba
-pag kain,pagkain
-di naman,dinaman
+hindi naman,dinaman
 ka pala,kapala
 nandito,andito
 bahala,bala
@@ -139,20 +117,15 @@ ganito,ganto
 kaniyang,kanyang
 diyos ko,jusq
 sa akin,saken
-cnsbi,sinasabi
-kgv,kagabi
-kona,ko na
-sau,sa iyo
-kc,kasi
-nlng,na lang
-ngaun,ngayon
-pg,pag
-ga2win,gagawin
-aq,ako
-dto,dito
-senyo,sa inyo
-satin,sa atin
-moko,mo ako
+sinasabi,cnsbi
+kagabi,kgv
+ko na,kona
+kasi,kc
+sa iyo,sau
+ngayon,ngaun
+sa inyo,senyo
+sa atin,satin
+mo ako,moko
 knb,ka na ba
-nobato,ano ba ito
-mona,muna
+ano ba ito,nobato
+muna,mona

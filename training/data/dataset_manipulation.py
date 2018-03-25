@@ -46,7 +46,6 @@ def manipulate(src, shuffle=False, augment_data=False, size=None):
                      for content in contents.splitlines()
                      if content]
     print('# Initialize multiprocess.Pool()')
-
     if shuffle:
         print('# 1st shuffle of dataset')
         random.shuffle(dataset)
