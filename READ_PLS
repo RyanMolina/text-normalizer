@@ -1,0 +1,190 @@
+Perplexity is often used for measuring the usefulness of a language model
+(basically a probability distribution over sentence, phrase, words, etc).
+
+When evaluating a LM, a good LM is one that tend to assign higher probabilities
+to the test data (predicts very well).
+
+Example for a test set with words W = w_1, w_2, ..., w_n
+
+the perplexity of the model on the test set is
+
+PP(W) = P(w_1, w_2, w_3) ^ (-1/N)
+
+However, perplexity is not a definite way of determining the usefulness of a
+language model. A model with low perplexity on a test set may not work eually
+well in real world application whose data may not be drawn from the same
+distribution as the test set. However, in the lack of efficient means to
+evaluate language model, perplexity is a useful metric for comparing language models.
+
+Howeever, in the lack of efficient means to evaluate language model, Perplexity
+is a useful metric for comparing language models.
+
+* Losses.
+  - sequence_loss: Loss for a sequence model returning average log-perplexity.
+  - sequence_loss_by_example: As above, but not averaging over all examples.
+
+* model_with_buckets: A convenience function to create models with bucketing
+    (see the tutorial above for an explanation of why and how to use it).
+
+
+HIGH ERROR RATE/PERPLEXITY WHEN MISSPELLING IS ADDED IN THE RULES.
+
+The idea is to collect clean text from Tagalog Wikipedia and various News Site that publish reports
+in Tagalog. Then, generate the equivalent noisy text using various rules such as:
+ - Grouping repeating units
+ - Repetition of characters
+ - Contraction
+ - Accent stylization
+ - Phonetic stylization
+ - Misspelling
+
+The collection process is fairly easy, since most of the mainstream News Sites in the Philippines has
+an archive section. The archive section was scraped using Scrapy and we only scraped the Title, Article and the
+URL. For the Tagalog Wikipedia dataset, we used the database dump from November 1, 2016 and extract every article.
+Then, we normalized the spaces, the character set used from utf-8 to ascii,
+some words that is still in the non-canonical form such as "penge", "meron", "kundi", and etc. We also removed the
+articles Location Tag (MANILA, Philippines - <Article>) and the reporter's signature at the end of every article (--FRJ, GMA NEWS) [Articles from new site only].
+
+Then train the parallel clean and noisy text using the Sequence to Sequence Recurrent Neural Network.
+
+- Rules layering
+- Remove the anuable rules, just put it in the dictionary.
+
+AYOKO -> AYAW KO is not yet working, possibly all of the accent stylization.
+
+cut the input upto character limit and cut the decoder if all that follows is incorrect,
+because that is the point where input stops.
+
+* encode hyphen to <hyphen> in simplediff to check errors.
+
+Detect first if the word is formal or informal to decrease false positive results.
+* Make the dataset tokens space seperated like the `` '' and shits
+I really need to fix the "ng" and "nang"
+allow hyphens period and slash
+Create a model to detect Named-Entity and Normal words to avoid False Positive results.
+
+
+Parameterized character limit on all files
+I need to remove all english words on the training data using Trigram language detections
+
+python3 -m train \
+ --dataset="dataset_name"
+ --model="model_name" \
+ --corpus="tagalog_sent_v3.txt" \
+ --split_dataset=True \
+ --generate_vocab=True \
+ --augment_data=True \
+ --shuffle=True \
+ --max_seq_len=140 \
+ --train=True
+
+ python3 -m train \
+ "model_name" \
+ --corpus="tagalog_sent_v3.txt" \
+ --split_dataset=True \
+ --generate_vocab=True \
+ --augment_data=True \
+ --shuffle=True \
+ --max_seq_len=140 \
+ --train=True
+
+MODEL_B
+71.31 15.48
+72.04 13.89
+
+MODEL_A
+67.99 9.33 
+
+MODEL_M
+71.81 13.69
+
+MODEL_NGRAM
+66.82 5.75
+
+MODEL_NGRAM_A
+70.32 13.10
+
+60.28
+62
+
+WORD-LEVEL
+Convert model_tagalog_c to word-level
+Convert model_tagalog_b to word-level
+Create model_tagalog_d word-level (apply only accent_style)
+
+
+DATASET
+A => Accent stylization only
+B => 1-pass noisification
+C => 2-pass noisification
+
+Save all tags:
+- memory expensive
+
+app.tagged_words > accuracy_testing > app.find_errors > simplediff
+
+
+""" TODO: Create a model to detect named-entity
+    (but most likely named-entity occur less on dataset so the model will just copy it) """
+
+""" TODO: add of hyphen, when affix ends with consonant and the root word starts in vowel
+                (Fix later if the hyphens affect the overall accuracy) """
+# TODO: Concat seperator affix to its rootword
+
+# TODO: Classifier for real words
+
+# TODO: Classifier for named-entity
+
+# Errors per word top 100 - Veritcal bar chart
+# Correct per word top 100 - Vertical bar chart
+# Perplexity - Line chart
+# Applied noisification in dataset - Radar chart and Pie chart
+# Accuracy/Error per model - Vertical bar chart
+# noisification category in informal words - pie chart
+
+
+# Word-level vs Char-level
+## Pros
+-   Does not generate another unknown word but just retain the original.
+-   Does not easily generate false positive result.
+-   Does not have the hard time to predict ambiguous contracted words
+-   Faster
+## Cons
+-   High memory, to store all vocabularies.
+-   Weak on prediction high variance style, like the repeating characters, removal of vowels.
+
+
+
+
+Uncommon Filipino Words
+halagambilang - score
+kampit - small kitchen knife
+kabtol - switch
+tsubibo - carrousel or merry-go-round
+sukgisan - geometry
+pinilakang-tabing - cinema
+pariugat - square root
+paminggalan - kitchen
+marilag - beautiful
+mapanibugho - jealous
+datung - money or cash
+dagitab - electricity
+balingkinitan - sexy or slim
+salumpuwit - chair
+liknayan - physics
+kapnayan - chemistry
+haynayan - biology
+sipnayan - math
+katipan - romantic partner
+salipawpaw - airplane
+kalupi - wallet
+sambat - fork
+miktinig - microphone
+pantalbay - charger
+pang-ulong hatinig - headset
+pook-sapot - website
+sulatroniko - email
+aklatroniko - ebook
+palapindutan - keyboard
+salongganisa - brief underwear
+

@@ -4,12 +4,17 @@ import argparse
 
 def char_embedding(text):
     """Turn dataset to space seperated characters and encode ' ' to <space>."""
-    return ' '.join(list(text)).replace(' '*3, ' <space> ')
+    text = ' '.join(list(text)).replace(' '*3, ' <space> ')
+    text = text.replace('` `', '<lquotes>') \
+                    .replace("' '", '<rquotes>')
+    return text
 
 
 def word_embedding(text):
     """From char_embedding to word_embedding."""
-    return text.replace(' ', '').replace('<space>', ' ')
+    text = text.replace(' ', '').replace('<space>', ' ')
+    text = text.replace('<lquotes>', '``').replace('<rquotes>', "''")
+    return text
 
 
 def parse_args():

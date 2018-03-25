@@ -134,17 +134,67 @@ class ModelBuilder(object):
         with tf.variable_scope("encoder") as scope:
             encoder_emb_inp = tf.nn.embedding_lookup(self.embedding_encoder,
                                                      source)
+            if self.hparams.encoder_type == "uni":
+                cell = self._build_encoder_cell(
+                    num_layers=self.hparams.num_layers,
+                    num_residual_layers=self.hparams.num_residual_layers)
 
-            cell = self._build_encoder_cell()
-            encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
-                cell,
-                encoder_emb_inp,
-                dtype=scope.dtype,
-                sequence_length=self.batch_input.source_sequence_length,
-                time_major=self.time_major,
-                swap_memory=True)
+                encoder_outputs, encoder_state = tf.nn.dynamic_rnn(
+                    cell,
+                    encoder_emb_inp,
+                    dtype=scope.dtype,
+                    sequence_length=self.batch_input.source_sequence_length,
+                    time_major=self.time_major,
+                    swap_memory=True)
+            elif self.hparams.encoder_type == "bi":
+                num_bi_layers = self.hparams.num_layers // 2
+                num_bi_residual_layers = self.hparams.num_residual_layers // 2
 
+                encoder_outputs, bi_encoder_state = self._build_bidirectional_rnn(
+                    inputs=encoder_emb_inp,
+                    sequence_length=self.batch_input.source_sequence_length,
+                    dtype=scope.dtype,
+                    num_bi_layers=num_bi_layers,
+                    num_bi_residual_layers=num_bi_residual_layers)
+
+                if num_bi_layers == 1:
+                    encoder_state = bi_encoder_state
+                else:
+                    encoder_state = []
+                    for layer_id in range(num_bi_layers):
+                        encoder_state.append(bi_encoder_state[0][layer_id])
+                        encoder_state.append(bi_encoder_state[1][layer_id])
+                    encoder_state = tuple(encoder_state)
+            
             return encoder_outputs, encoder_state
+
+    def _build_encoder_cell(self, num_layers, num_residual_layers):
+        """Build a multi-layer RNN cell that can be used by encoder."""
+        return create_rnn_cell(
+            num_units=self.hparams.num_units,
+            num_layers=num_layers,
+            num_residual_layers=num_residual_layers,
+            input_keep_prob=self.hparams.input_keep_prob,
+            output_keep_prob=self.hparams.output_keep_prob)
+
+    def _build_bidirectional_rnn(self, inputs, sequence_length,
+                                 dtype,
+                                 num_bi_layers,
+                                 num_bi_residual_layers):
+        fw_cell = self._build_encoder_cell(num_bi_layers,
+                                           num_bi_residual_layers)
+        bw_cell = self._build_encoder_cell(num_bi_layers,
+                                           num_bi_residual_layers)
+
+        bi_outputs, bi_state = tf.nn.bidirectional_dynamic_rnn(
+            fw_cell,
+            bw_cell,
+            inputs,
+            dtype=dtype,
+            sequence_length=sequence_length,
+            time_major=self.time_major,
+            swap_memory=True)
+        return tf.concat(bi_outputs, -1), bi_state
 
     def _build_decoder(self, encoder_outputs, encoder_state):
 
@@ -202,21 +252,34 @@ class ModelBuilder(object):
 
             # Inference
             else:
-                # length_penalty_weight = hparams.length_penalty_weight
+                beam_width = self.hparams.beam_width
+                length_penalty_weight = self.hparams.length_penalty_weight
                 start_tokens = tf.fill([self.batch_size], tgt_sos_id)
                 end_token = tgt_eos_id
 
-                # Helper
-                helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
-                    self.embedding_decoder, start_tokens, end_token)
+                if beam_width > 0:
+                    my_decoder = tf.contrib.seq2seq.BeamSearchDecoder(
+                        cell=cell,
+                        embedding=self.embedding_decoder,
+                        start_tokens=start_tokens,
+                        end_token=end_token,
+                        initial_state=decoder_initial_state,
+                        beam_width=beam_width,
+                        output_layer=self.output_layer,
+                        length_penalty_weight=length_penalty_weight,
+                    )
+                else:
+                    # Helper
+                    helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(
+                        self.embedding_decoder, start_tokens, end_token)
 
-                # Decoder
-                my_decoder = tf.contrib.seq2seq.BasicDecoder(
-                    cell,
-                    helper,
-                    decoder_initial_state,
-                    output_layer=self.output_layer  # applied per timestep
-                )
+                    # Decoder
+                    my_decoder = tf.contrib.seq2seq.BasicDecoder(
+                        cell,
+                        helper,
+                        decoder_initial_state,
+                        output_layer=self.output_layer  # applied per timestep
+                    )
 
                 # Dynamic decoding
                 outputs, final_context_state, _ = \
@@ -227,18 +290,14 @@ class ModelBuilder(object):
                         swap_memory=True,
                         scope=decoder_scope)
 
-                logits = outputs.rnn_output
-                sample_id = outputs.sample_id
+                if beam_width > 0:
+                    logits = tf.no_op()
+                    sample_id = outputs.predicted_ids
+                else:
+                    logits = outputs.rnn_output
+                    sample_id = outputs.sample_id
 
         return logits, sample_id, final_context_state
-
-    def _build_encoder_cell(self):
-        """Build a multi-layer RNN cell that can be used by encoder."""
-        return create_rnn_cell(
-            num_units=self.hparams.num_units,
-            num_layers=self.hparams.num_layers,
-            input_keep_prob=self.hparams.input_keep_prob,
-            output_keep_prob=self.hparams.output_keep_prob)
 
     def _build_decoder_cell(self, encoder_outputs, encoder_state,
                             source_sequence_length):
@@ -248,6 +307,7 @@ class ModelBuilder(object):
 
         num_units = self.hparams.num_units
         num_layers = self.hparams.num_layers
+        beam_width = self.hparams.beam_width
 
         dtype = tf.float32
 
@@ -257,7 +317,18 @@ class ModelBuilder(object):
         else:
             memory = encoder_outputs
 
-        batch_size = self.batch_size
+
+        if not self.training and beam_width > 0:
+            memory = tf.contrib.seq2seq.tile_batch(memory, multiplier=beam_width)
+            source_sequence_length = tf.contrib.seq2seq.tile_batch(source_sequence_length,
+                                                                   multiplier=beam_width)
+
+            encoder_state = tf.contrib.seq2seq.tile_batch(encoder_state,
+                                                          multiplier=beam_width)
+
+            batch_size = self.batch_size * beam_width
+        else:
+            batch_size = self.batch_size
 
         # Create the attention mechanism
         if self.hparams.attention_option == "luong":
@@ -290,10 +361,11 @@ class ModelBuilder(object):
             num_units=num_units,
             num_layers=num_layers,
             input_keep_prob=self.hparams.input_keep_prob,
-            output_keep_prob=self.hparams.output_keep_prob)
+            output_keep_prob=self.hparams.output_keep_prob,
+            num_residual_layers=self.hparams.num_residual_layers)
 
         # Only generate alignment in greedy INFER mode.
-        alignment_history = (not self.training)
+        alignment_history = (not self.training and beam_width == 0)
         cell = tf.contrib.seq2seq.AttentionWrapper(
             cell,
             attention_mechanism,
@@ -347,6 +419,8 @@ class ModelBuilder(object):
         return sample_words, infer_summary
 
     def _get_infer_summary(self):
+        if self.hparams.beam_width > 0:
+            return tf.no_op()
         return self.final_context_state.alignment_history.stack()
 
 
@@ -394,6 +468,7 @@ def create_enc_dec_embedding(src_vocab_size,
 def _single_cell(num_units,
                  input_keep_prob,
                  output_keep_prob,
+                 residual_connection,
                  device_str=None):
     single_cell = tf.contrib.rnn.GRUCell(num_units)
 
@@ -401,17 +476,22 @@ def _single_cell(num_units,
         cell=single_cell,
         input_keep_prob=input_keep_prob,
         output_keep_prob=output_keep_prob)
+
+    if residual_connection:
+        single_cell = tf.contrib.rnn.ResidualWrapper(single_cell)
+    
     if device_str:
         single_cell = tf.contrib.rnn.DeviceWrapper(single_cell, device_str)
 
     return single_cell
 
 
-def create_rnn_cell(num_units, num_layers, input_keep_prob, output_keep_prob):
+def create_rnn_cell(num_units, num_layers, input_keep_prob, output_keep_prob, num_residual_layers):
     cell_list = []
     for i in range(num_layers):
         single_cell = _single_cell(
-            num_units, input_keep_prob, output_keep_prob)
+            num_units, input_keep_prob, output_keep_prob, residual_connection=(i >= num_layers - num_residual_layers)
+            )
         cell_list.append(single_cell)
 
     if len(cell_list) == 1:

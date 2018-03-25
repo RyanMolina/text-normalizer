@@ -57,6 +57,10 @@ class Predictor(object):
                              self.batch_size_placeholder: 1
                          })
         outputs, infer_summary = self.model.infer(self.session)
+
+        if self.hparams.beam_width > 0:
+            outputs = outputs[0]
+
         outputs = outputs.tolist()[0]
 
         eos_token = self.hparams.eos_token.encode('utf-8')

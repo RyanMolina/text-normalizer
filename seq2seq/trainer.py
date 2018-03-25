@@ -245,6 +245,9 @@ class Trainer(object):
             """
             if tgt_eos:
                 tgt_eos = tgt_eos.encode("utf-8")
+
+            if hparams.beam_width > 0:
+                outputs = outputs[0]
             # Select a sentence
             output = outputs.tolist()[0]
             # If there is an eos symbol in outputs, cut them at that point.
@@ -256,8 +259,16 @@ class Trainer(object):
         decode_id = random.randint(0, len(src_data) - 1)
         utils.print_out("  # {}".format(decode_id))
 
+        sentence = src_data[decode_id]
+
+        # sentence = ' '.join(list(sentence)).replace(' ' * 3, ' <space> ')
+
+        # sentence = sentence.replace('` `', '<lquotes>') \
+        #                    .replace("' '", '<rquotes>')
+
+
         iterator_feed_dict = {
-            iterator_src_placeholder: [src_data[decode_id]],
+            iterator_src_placeholder: [sentence],
             iterator_batch_size_placeholder: 1,
         }
         sess.run(iterator.initializer, feed_dict=iterator_feed_dict)

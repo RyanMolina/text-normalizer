@@ -9,52 +9,6 @@ import logging
 import os
 
 
-def main():
-    get_vocab(args.infile,
-              args.max_vocab_size,
-              args.delimiter,
-              args.downcase,
-              args.min_frequency)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate vocabulary for a tokenized text file.")
-    parser.add_argument(
-        "--min_frequency",
-        dest="min_frequency",
-        type=int,
-        default=0,
-        help="Minimum frequency of a word to be included in the vocabulary.")
-    parser.add_argument(
-        "--max_vocab_size",
-        dest="max_vocab_size",
-        type=int,
-        help="Maximum number of tokens in the vocabulary")
-    parser.add_argument(
-        "--downcase",
-        dest="downcase",
-        type=bool,
-        help="If set to true, downcase all text before processing.",
-        default=False)
-    parser.add_argument(
-        "infile",
-        nargs="?",
-        type=argparse.FileType("r"),
-        default=sys.stdin,
-        help="Input tokenized text file to be processed.")
-    parser.add_argument(
-        "--delimiter",
-        dest="delimiter",
-        type=str,
-        default=" ",
-        help="""Delimiter character for tokenizing. Use \" \" and \"\" for word
-            and char level respectively."""
-    )
-    args = parser.parse_args()
-    main()
-
-
 def get_vocab(infile, max_vocab_size=None, delimiter=" ",
               downcase=False, min_frequency=0, to_file=True):
     # Counter for all tokens in the vocabulary
@@ -101,3 +55,47 @@ def get_vocab(infile, max_vocab_size=None, delimiter=" ",
                 print("{}".format(word), file=outfile)
 
     return word_with_counts
+
+
+def main():
+    get_vocab(args.infile,
+              args.max_vocab_size,
+              args.delimiter,
+              args.downcase,
+              args.min_frequency)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate vocabulary for a tokenized text file.")
+    parser.add_argument(
+        "--min_frequency",
+        dest="min_frequency",
+        type=int,
+        default=0,
+        help="Minimum frequency of a word to be included in the vocabulary.")
+    parser.add_argument(
+        "--max_vocab_size",
+        dest="max_vocab_size",
+        type=int,
+        help="Maximum number of tokens in the vocabulary")
+    parser.add_argument(
+        "--downcase",
+        dest="downcase",
+        type=bool,
+        help="If set to true, downcase all text before processing.",
+        default=False)
+    parser.add_argument(
+        "infile",
+        type=str,
+        help="Input tokenized text file to be processed.")
+    parser.add_argument(
+        "--delimiter",
+        dest="delimiter",
+        type=str,
+        default=" ",
+        help="""Delimiter character for tokenizing. Use \" \" and \"\" for word
+            and char level respectively."""
+    )
+    args = parser.parse_args()
+    main()
