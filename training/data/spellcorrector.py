@@ -54,3 +54,9 @@ class SpellCorrector:
 
     def known(self, words):
         return set(word for word in words if word in self.WORDS)
+
+
+if __name__ == '__main__':
+    spell_corrector = SpellCorrector('/home/ryan/tagbic-bictag/backend/bicol/normalizer/training/data/train.dec')
+    while True:
+        print(spell_corrector.correction(input('>> ')))

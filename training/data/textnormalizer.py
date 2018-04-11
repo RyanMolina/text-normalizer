@@ -69,12 +69,6 @@ class TextNormalizer:
             repl if match.group(2).islower() else repl.upper(),
             match.group(3))
 
-    def am_repl(self, match):
-        pass
-    
-    def an_repl(self, match):
-        pass
-    
     def raw_daw_repl(self, match):
         """Normalize text that misuse raw and daw before noisification."""
         if match.group(1) in self.vowels:
@@ -90,18 +84,6 @@ class TextNormalizer:
 
     def accent_style(self, text):
         return self._substitution(text, self.accent_words_dict)
-
-    def ng2nang(self, text):
-        pass
-
-    def nang2ng(self, text):
-        pass
-
-    def hyphen_repeating_units(self, units):
-        pass
-    
-    def hypen_vowel_rootword(self, word):
-        pass
 
     @staticmethod
     def _substitution(word, substitution_dict):

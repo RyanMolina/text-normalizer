@@ -1,5 +1,7 @@
 """Contains the Serve class."""
 import os
+import re
+import string
 from pprint import pprint
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tokenize.moses import MosesDetokenizer
@@ -21,7 +23,7 @@ class Serve:
         data_dir = os.path.join(TRAINING_PATH, 'data', 'dataset', dataset_name)
         model_dir = os.path.join(TRAINING_PATH, 'model', model_name)
 
-        hparams = utils.load_hparams(
+        self.hparams = utils.load_hparams(
             os.path.join(model_dir, 'hparams.json'))
 
         self.detokenizer = MosesDetokenizer()
@@ -31,7 +33,7 @@ class Serve:
                                               dataset_dir=data_dir,
                                               output_dir=model_dir,
                                               output_file=checkpoint,
-                                              hparams=hparams)
+                                              hparams=self.hparams)
         self.fix_problems = fix_problems
         if self.fix_problems: 
             ACCENT_PATH = os.path.join(TRAINING_PATH, 'data', 'accented_words.dic')
@@ -50,15 +52,15 @@ class Serve:
                         'r') as f:
                 hyphenator_dict = f.read()
 
-            spell_corrector = SpellCorrector(
+            self.spell_corrector = SpellCorrector(
                     dict_path=os.path.join(
-                        TRAINING_PATH, 'data', 'corpus', 'tagalog_sent_v3.txt'))
+                        TRAINING_PATH, 'data', 'corpus', 'merged_bicol.txt'))
 
             self.t_normalizer = TextNormalizer(
                     accent_words_dict=accent_words_dict,
                     hyphenator_dict=hyphenator_dict,
                     pandiwa_words_dict=pandiwa_words_dict,
-                    spell_corrector=spell_corrector)
+                    spell_corrector=self.spell_corrector)
 
 
     def model_api(self, input_data):
@@ -76,42 +78,55 @@ class Serve:
 
         output = ""
         for sentence in sent_tokenize(input_data):
-            sentence = sentence[:max_seq_len]
-            max_seq_len = sentence.rfind(' ')
-            sentence = sentence[:max_seq_len]
-            tokens = self._char_emb_format(sentence)
+            chunks = self._max_len_non_word_break(sentence)
 
-            normalized = self.normalizer.predict(tokens)
+            is_already_normalized = True
+            for chunk in chunks:
+                for token in chunk.split():
+                    print(self.spell_corrector.correction(token.lower()))
+                    if self.spell_corrector.correction(token.lower()) != token.lower():
+                        is_already_normalized = False
+                        print('Informal')
+                        break
+                if is_already_normalized:
+                    print('Normal')
+                    continue
 
-            if self.char_emb:
-                normalized = normalized.replace(' ', '') \
-                                       .replace('<space>', ' ')
+                tokens = self._char_emb_format(chunk)
 
-                normalized = normalized.replace('<lquotes>', '``') \
-                                       .replace('<rquotes', "''")
+                normalized = self.normalizer.predict(tokens)
 
-                normalized = normalized.split()
-                
-                if self.fix_problems:
-                    normalized = ' '.join([self.t_normalizer.spell_correct(word)
-                                for word in normalized])
+                if self.char_emb:
+                    normalized = normalized.replace(' ', '') \
+                                        .replace('<space>', ' ')
 
-                    normalized = self.t_normalizer.expand_expr(normalized)
-
-                    normalized = self.t_normalizer.raw_daw.sub(
-                            self.t_normalizer.raw_daw_repl, normalized)
+                    normalized = normalized.replace('<lquotes>', '``') \
+                                        .replace('<rquotes', "''")
 
                     normalized = normalized.split()
+                    
+                    if self.fix_problems:
+                        normalized = ' '.join([self.t_normalizer.spell_correct(word)
+                                    for word in normalized])
 
-                    normalized = [self.t_normalizer.accent_style(word)
-                                for word in self.t_normalizer.mwe_tokenizer \
-                                                .tokenize(normalized)]
+                        normalized = self.t_normalizer.expand_expr(normalized)
 
-                normalized = self.detokenizer.detokenize(normalized,
-                                                         return_str=True)
-                
+                        normalized = self.t_normalizer.raw_daw.sub(
+                                self.t_normalizer.raw_daw_repl, normalized)
+                        if normalized[-1] not in string.punctuation:
+                            normalized = normalized + sentence[-1]
+                        else:
+                            normalized = re.sub(r'\.{2}', '.', normalized)
+                        normalized = normalized.split()
+                        normalized = [self.t_normalizer.accent_style(word)
+                                    for word in self.t_normalizer.mwe_tokenizer \
+                                                    .tokenize(normalized)]
 
-            output += normalized + " "
+                    normalized = self.detokenizer.detokenize(normalized,
+                                                            return_str=True)
+                    
+
+                output += normalized + " "
         return output.strip()
 
     @staticmethod
@@ -120,6 +135,22 @@ class Serve:
         text = text.replace('` `', '<lquotes>') \
                         .replace("' '", '<rquotes>')
         return text
+    
+    def _max_len_non_word_break(self, sentence):
+        orig_sent = sentence
+        i = 0
+        max_seq_len = self.hparams.src_max_len
+        while 0 <= i < len(orig_sent):
+            sentence = orig_sent[i:i+max_seq_len]
+            if len(sentence) > max_seq_len:
+                seq_len = sentence.rfind(' ') 
+                if seq_len == -1:
+                    seq_len = max_seq_len
+            else:
+                seq_len = max_seq_len
+
+            yield sentence[:i+seq_len]
+            i += seq_len + 1
 
 def parse_args():
     """Parse the arguments needed before running.
