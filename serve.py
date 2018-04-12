@@ -11,7 +11,7 @@ from .utils.helper import csv_to_dict
 class Serve:
     """Serve an instance of the trained model."""
 
-    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False, fix_problems=False):
+    def __init__(self, sess, model_name, dataset_name, checkpoint, char_emb=False, fix_problems=False, max_seq_len=140):
         """Prepare the model's dataset and trained model."""
         os.makedirs(os.path.join('training', 'data', 'dataset', dataset_name),
                     exist_ok=True)
@@ -59,7 +59,7 @@ class Serve:
                     hyphenator_dict=hyphenator_dict,
                     pandiwa_words_dict=pandiwa_words_dict,
                     spell_corrector=spell_corrector)
-
+        self.max_seq_len = max_seq_len
 
     def model_api(self, input_data):
         """Input preprocessing before prediction.
@@ -76,9 +76,9 @@ class Serve:
 
         output = ""
         for sentence in sent_tokenize(input_data):
-            sentence = sentence[:max_seq_len]
+            sentence = sentence[:self.max_seq_len]
             max_seq_len = sentence.rfind(' ')
-            sentence = sentence[:max_seq_len]
+            sentence = sentence[:self.max_seq_len]
             tokens = self._char_emb_format(sentence)
 
             normalized = self.normalizer.predict(tokens)
